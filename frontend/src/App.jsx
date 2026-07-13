@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api'
 import { GovLockup } from './ui'
 import Portal from './views/Portal'
@@ -34,7 +34,10 @@ function Bokeh() {
 export default function App() {
   const [view, setView] = useState('portal')
   const [lang, setLang] = useState('en')
+  const [meta, setMeta] = useState(null)
 
+  useEffect(() => { api.meta().then(setMeta).catch(() => {}) }, [])
+  const live = meta?.mode === 'SAS_LIVE'
   const reset = async () => { await api.reset(); window.location.reload() }
 
   return (
@@ -45,7 +48,7 @@ export default function App() {
         <GovLockup />
         <div className="accent-line" />
         <div className="app-title">Agent Ecosystem</div>
-        <div className="status-pill"><span className="status-dot" /> SIMULATION · SAS swap-ready</div>
+        <div className="status-pill"><span className="status-dot" style={live ? { background: '#047857', boxShadow: '0 0 6px rgba(4,120,87,0.6)' } : undefined} /> {meta?.badge || 'SIMULATION · SAS swap-ready'}</div>
         {view === 'portal' && (
           <div className="flex rounded-full overflow-hidden border border-ink/10" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)' }}>
             <button onClick={() => setLang('en')}

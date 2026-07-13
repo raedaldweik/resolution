@@ -1,0 +1,46 @@
+# Builds the MCP server images and publishes them to GitHub Container Registry
+# so SAS RAM can pull them as Container MCP Server templates:
+#   ghcr.io/<owner>/moce-mcp-tools:latest
+#   ghcr.io/<owner>/moce-verify-claims:latest
+#
+# After the first publish, make the packages public (GitHub → Packages →
+# package → Package settings → Change visibility) or configure RAM with
+# registry credentials.
+
+name: publish-mcp-images
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["mcp/**", ".github/workflows/publish-mcp.yml"]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: moce-mcp-tools
+            context: mcp/moce_tools
+          - name: moce-verify-claims
+            context: mcp/verify_claims
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ github.sha }}

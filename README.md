@@ -74,11 +74,27 @@ seed state. The scripted engine is deterministic — same clicks, same show, no 
 
 The REST surface (`/api/*`) is designed to survive the swap: the frontend does not change.
 
+## Deploying — two versions on Railway
+
+| Service | `APP_MODE` | What runs |
+|---|---|---|
+| `moce-demo` | `simulation` (default) | fully self-contained scripted demo — no SAS, no keys |
+| `moce-demo-sas` | `sas` | chat through a live **SAS RAM agent** (answers, citations, traces); rest simulated until wired |
+
+Full steps: **[docs/DEPLOY_RAILWAY.md](docs/DEPLOY_RAILWAY.md)**.
+RAM wiring + MCP package publishing (GHCR): **[docs/RAM_INTEGRATION.md](docs/RAM_INTEGRATION.md)** —
+the `mcp/` folder ships two MCP servers (`moce-mcp-tools`, `moce-verify-claims`) that GitHub Actions
+publishes as container images for RAM to pull.
+
 ## Layout
 
 ```
 backend/          FastAPI app + simulated SAS layer (engine/) + seed data (store.py)
+                  live_ram.py — SAS-live adapter (APP_MODE=sas → RAM agent)
 frontend/         React + Vite + Tailwind — six views:
                   Citizen Portal · Contact Center · Document Review ·
                   Case Management · Decision Studio · Governance
+mcp/              MCP servers for RAM (published to GHCR by GitHub Actions):
+                  moce_tools (action tools) · verify_claims (hallucination gate)
+docs/             DEPLOY_RAILWAY.md · RAM_INTEGRATION.md
 ```

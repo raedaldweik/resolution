@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import live_ram
 from store import store
 from engine import cases as case_engine
 from engine import decisioning, documents, resolution
@@ -71,14 +72,21 @@ class ApproveIn(BaseModel):
 # ------------------------------------------------------------------ meta
 
 @app.get("/api/health")
-def health():
-    return {"status": "ok", "mode": "SIMULATION"}
+async def health():
+    return {"status": "ok",
+            "mode": "SAS_LIVE" if live_ram.sas_chat_enabled() else "SIMULATION",
+            "ram": await live_ram.health()}
 
 
 @app.get("/api/meta")
 def meta():
+    live = live_ram.sas_chat_enabled()
     return {
-        "mode": "SIMULATION",
+        "mode": "SAS_LIVE" if live else "SIMULATION",
+        "badge": "LIVE · SAS RAM" if live else "SIMULATION · SAS swap-ready",
+        "capabilities": {"chat": "sas" if live else "simulation",
+                         "documents": "simulation", "cases": "simulation",
+                         "decisioning": "simulation", "governance": "simulation"},
         "title": "MoCE Agent Ecosystem",
         "agents": [
             {"key": "documents", "nameEn": "Document Processing", "sas": "SAS RAM agent + OCR pipeline + VTA"},
@@ -112,6 +120,11 @@ def create_session(body: SessionIn):
 async def chat(body: ChatIn):
     if body.sessionId not in store.sessions:
         raise HTTPException(404, "session not found")
+    if live_ram.sas_chat_enabled():
+        try:
+            return await live_ram.chat(body.sessionId, body.message, body.lang)
+        except Exception as e:
+            raise HTTPException(502, f"SAS RAM error: {str(e)[:300]}")
     await asyncio.sleep(0.4)  # a touch of realism
     return resolution.handle_message(body.sessionId, body.message, body.lang)
 
@@ -256,11 +269,16 @@ def traces(limit: int = 40):
 
 
 @app.get("/api/governance/traces/{trace_id}")
-def trace_detail(trace_id: str):
+async def trace_detail(trace_id: str):
     t = next((t for t in store.traces if t["traceId"] == trace_id), None)
-    if not t:
-        raise HTTPException(404, "trace not found")
-    return t
+    if t:
+        return t
+    if live_ram.sas_chat_enabled():  # RAM query ids double as trace ids in live mode
+        try:
+            return await live_ram.get_trace(trace_id)
+        except Exception:
+            pass
+    raise HTTPException(404, "trace not found")
 
 
 @app.get("/api/governance/metrics")
