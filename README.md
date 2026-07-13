@@ -1,117 +1,75 @@
-# MoCE Agent Ecosystem — Interactive Demo
+# MoCE Agent Ecosystem
 
-A stage-ready demo of the four-agent ecosystem from the MoCE RFP (Enterprise Agentic AI
-Platform & AI Agents), **tailored to the SAS architecture it will run on** — SAS Retrieval
-Agent Manager (RAM) + SAS Viya (Intelligent Decisioning, Workflow, Model governance).
+Three agents on **SAS Retrieval Agent Manager** + one chat UI. Nothing else.
 
-It runs at three levels of "real", switched purely by environment variables:
+| Agent | What it is | Build sheet |
+|---|---|---|
+| **MoCE Document Processing** | Real OCR (tesseract ara+eng) via an MCP server: read a scanned document, extract fields, classify, summarize | [docs/agents/1-document-processing.md](docs/agents/1-document-processing.md) |
+| **MoCE Knowledge & Policy** | RAG over the MoCE Policy Library (real u.ae / moce.gov.ae documents + 2 operational PDFs), cited answers | [docs/agents/2-knowledge-policy.md](docs/agents/2-knowledge-policy.md) |
+| **MoCE Customer Resolution** | Orchestrator: record lookup + delegates to the two agents above + executes business rules on SAS Intelligent Decisioning through your Viya MCP | [docs/agents/3-customer-resolution.md](docs/agents/3-customer-resolution.md) |
 
-| Level | Enable with | Chat engine | Business rules |
-|---|---|---|---|
-| **Simulation** | nothing (default) | deterministic script — zero-risk, offline | in-process mirror |
-| **Claude agent** | `ANTHROPIC_API_KEY` | **real agentic loop on the Claude API** (`claude-opus-4-8`): live triage, tool calls, grounded answers, `verify_claims` gate | in-process mirror |
-| **SAS live** | `APP_MODE=sas` + RAM vars / `SAS_MCP_URL` | **SAS RAM agent** | **SAS Intelligent Decisioning (MAS)** via the `sas-mcp-server` MCP |
+The UI is the same app as `finance_ram_ui`, re-skinned to the MoCE gold
+theme: a thin FastAPI proxy over the RAM REST API + a React chat. Point it at
+your RAM, sign in, and whatever agents are started there appear in the
+dropdown — you chat with the *real* agents and see their real tool / LLM /
+retrieval traces per answer. No scripted answers anywhere.
 
-`SAS_MCP_URL` is independent of the chat mode — set it in any level and every eligibility
-decision executes on the real published SAS ID module (the result is stamped `executedOn`
-so you can prove it on stage). Setup: **[docs/SAS_ID_SETUP.md](docs/SAS_ID_SETUP.md)**.
+## The storyline (one thread through all three agents)
 
-## The golden path (≈ 15 minutes on stage)
+**"Fatima's inflation allowance stopped."**
 
-One story travels through all four agents — **Fatima's Inflation Allowance**:
+1. Ask **Customer Resolution** why → looks up her record, gets the rule from
+   **Knowledge & Policy** (POL-2024-017 Art 6.2/4.2): suspended because income
+   verification expired — *suspended, not cancelled* — and asks for a fresh
+   salary certificate.
+2. Hand it the scanned certificate (`knowledge_base/samples/`) → it delegates
+   to **Document Processing**, which OCRs it for real: AED 23,500, 95%
+   confidence.
+3. It executes the published decision flow on **SAS Intelligent Decisioning**
+   (`docs/DECISIONING_RULES.md`) → ELIGIBLE, reinstate, back-pay AED 7,050,
+   two-stage approval — and explains exactly that, citing Art 7.1.
+4. Ask about an "Eid bonus" → nothing verifiable in any record → it says so
+   and refers to the contact centre instead of inventing an amount.
+5. Change the income threshold in Intelligent Decisioning, republish, re-ask
+   → the same agent decides differently. Business rules, no vendor, no code.
 
-1. **Citizen Portal** — sign in with UAEPass (mock), ask *"Why did my inflation allowance
-   payment stop?"* (English or Arabic, full RTL). The Customer Resolution agent investigates:
-   identity → benefit record (SUSPENDED, verification expired) → cited policy answer.
-2. **Query triage** — ask *"What documents do I need to apply?"* first: the agent triages the
-   contact (many "complaints" are really questions) as a **QUERY** and answers it instantly from
-   the knowledge base with citations — **no case opened**. Complaint markers route to investigation
-   instead; the triage decision is visible on every answer and in the Governance "queries deflected" KPI.
-3. **Upload the scanned salary certificate** (suggestion chip). The Document Processing agent
-   runs OCR → classification (96%) → schema-driven extraction. One field (income, 74%) falls
-   below its threshold → routed to human review. **HITL demonstrated, not claimed.**
-3. **Document Review** — reviewer sees the annotated certificate, corrects the field,
-   approves. The Resolution agent resumes automatically.
-4. **Back in the Portal** — the Knowledge & Decision agent has re-assessed eligibility via the
-   decision flow (ELIGIBLE, 93%) and proposes: reinstate + AED 7,050 back-pay. Confirm →
-   reinstatement executes within authority, SMS sent, case opened for the back-pay.
-5. **Case Management** — two-stage approval (Social Worker → Social Auditor). Stage-2 approval
-   releases the back-pay and notifies Fatima in her chat. The Learning-to-Autonomy tracker
-   updates (alignment vs the 90% / 95% gates).
-6. **The hallucination beat** — ask *"Will I also get the Eid bonus with my back-pay?"*
-   The drafted reply contains an unverifiable claim → `verify_claims` **blocks the response**,
-   answers honestly with only verified amounts, and escalates to the Contact Center.
-7. **Decision Studio** — run the flow for Ahmed (income 27,000) → INELIGIBLE. Change the
-   income threshold 25,000 → 30,000, publish v4 (**no code, no vendor, 90 seconds**), re-run →
-   ELIGIBLE. Version history + generated DS2 score code shown.
-8. **Governance** — every answer's full reasoning trace (tool calls, LLM calls, retrievals,
-   guardrails, token cost), confidence distributions, hallucination rate vs the ≤ 0.5% target.
+## Repo layout
 
-## Run it
+```
+backend/           FastAPI proxy over RAM (auth flows, async queries, traces, OCR /api/extract)
+frontend/          React chat UI (agent dropdown, live activity, citations, query details)
+mcp/document_processing/   OCR MCP server → ghcr.io/raedaldweik/moce-document-processing
+mcp/verify_claims/         hallucination-gate MCP → ghcr.io/raedaldweik/moce-verify-claims
+knowledge_base/    what goes in the RAG (real sources + 2 authored PDFs) + sample scan
+docs/agents/       the three RAM build sheets
+docs/DECISIONING_RULES.md  rule sets + decision flow for SAS Intelligent Decisioning
+```
+
+## Run the UI
 
 ```bash
-# backend (serves the built frontend too)
-cd backend
-pip install -r requirements.txt
+cd backend && pip install -r requirements.txt
+cp .env.example .env        # set RAM_API_URL (or RAM_MOCK=true to try the UI without RAM)
 uvicorn main:app --port 8000
-
-# frontend — dev mode (optional; otherwise build once)
-cd frontend
-npm install
-npm run dev        # http://localhost:5173 (proxies /api to :8000)
-# or: npm run build  → then http://localhost:8000 serves everything
+cd ../frontend && npm install && npm run dev    # http://localhost:5173
 ```
 
-Docker: `docker build -t moce-demo . && docker run -p 8000:8000 moce-demo`
+Docker (serves the built frontend on one port):
+`docker build -t moce-ui . && docker run -p 8000:8000 -e RAM_API_URL=... moce-ui`
 
-**Demo tips:** the sidebar footer lists the golden-path order. `↺ Reset demo` restores the
-seed state. The scripted engine is deterministic — same clicks, same show, no Wi-Fi risk.
-For the live version: `export ANTHROPIC_API_KEY=sk-ant-…` before starting the backend and
-the chat becomes a genuine Claude agentic loop (the header badge flips to **LIVE · Claude
-agent**); add `SAS_MCP_URL` / `SAS_MCP_API_KEY` and the decision flow runs on real
-SAS Intelligent Decisioning.
+Railway: **New Project → Deploy from GitHub repo** — `railway.json` builds
+the Dockerfile with `/api/health` as the health check; set `RAM_API_URL`
+(+ auth vars from `backend/.env.example`) on the service. Pushing to the
+tracked branch redeploys; the GitHub Action publishes the two MCP images to
+GHCR on any `mcp/**` change (make the packages public after the first run so
+RAM can pull them).
 
-## What becomes what — the SAS swap map
+## Connecting to RAM
 
-| Demo module (simulation) | Production component |
-|---|---|
-| `backend/engine/resolution.py` — orchestrator, intents, authority-limited actions | **SAS RAM orchestrator agent** (A2A to agents 1 & 2) + allow-listed MCP action tools |
-| `backend/engine/documents.py` — OCR/classify/extract + review queue | **SAS RAM ingestion** (PaddleOCR ar+en) + VTA classifier + schema-constrained extraction agent |
-| `backend/engine/knowledge.py` — retrieval + recommendation contract | **SAS RAM agent** over MoCE policy collections (real citations) |
-| `backend/engine/decisioning.py` — versioned rule sets, publish, rule-fire trace, DS2 preview | **SAS Intelligent Decisioning** → MAS via `sas-mcp-server` `score_data` — **already wired**: set `SAS_MCP_URL` (docs/SAS_ID_SETUP.md) |
-| `backend/engine/cases.py` — two-stage approval + alignment tracking | **SAS Workflow Manager** (BPMN) + CAS alignment mart + VA dashboard |
-| `backend/engine/tracer.py` — toolCalls / llmCalls / retrievalCalls / guardrails | **SAS RAM query telemetry** (`/toolCalls`, `/llmCalls`, `/retrievalCalls` by `parentQueryId`) — same shapes, drop-in |
-| Scripted bilingual answers | **UAE sovereign LLM** on on-prem GPUs (RAM is BYO-model) |
-| `store.py` seed data (citizens, benefits, payments) | Ministry registries / Dynamics 365 via DB-Connector & OpenAPI MCP servers |
-| Document type registry (`doc_schemas`) | Survives as-is — the ministry-owned, no-code schema registry |
-| `verify_claims` guardrail | A real MCP tool checking draft claims against session tool results |
-
-The REST surface (`/api/*`) is designed to survive the swap: the frontend does not change.
-
-## Deploying — the versions on Railway
-
-| Service | Variables | What runs |
-|---|---|---|
-| `moce-demo` | none | fully self-contained scripted demo — no SAS, no keys |
-| `moce-demo-claude` | `ANTHROPIC_API_KEY` (+ optional `SAS_MCP_*`) | real Claude agentic chat; rules on SAS ID if the MCP vars are set |
-| `moce-demo-sas` | `APP_MODE=sas` + RAM vars | chat through a live **SAS RAM agent** (answers, citations, traces) |
-
-Full steps: **[docs/DEPLOY_RAILWAY.md](docs/DEPLOY_RAILWAY.md)**.
-RAM wiring + MCP package publishing (GHCR): **[docs/RAM_INTEGRATION.md](docs/RAM_INTEGRATION.md)** —
-the `mcp/` folder ships two MCP servers (`moce-mcp-tools`, `moce-verify-claims`) that GitHub Actions
-publishes as container images for RAM to pull.
-
-## Layout
-
-```
-backend/          FastAPI app + simulated SAS layer (engine/) + seed data (store.py)
-                  live_ram.py — SAS-live adapter (APP_MODE=sas → RAM agent)
-                  llm_agent.py — real Claude agentic loop (ANTHROPIC_API_KEY)
-                  sas_id.py — SAS Intelligent Decisioning via sas-mcp-server MCP (SAS_MCP_URL)
-frontend/         React + Vite + Tailwind — six views:
-                  Citizen Portal · Contact Center · Document Review ·
-                  Case Management · Decision Studio · Governance
-mcp/              MCP servers for RAM (published to GHCR by GitHub Actions):
-                  moce_tools (action tools) · verify_claims (hallucination gate)
-docs/             DEPLOY_RAILWAY.md · RAM_INTEGRATION.md · SAS_ID_SETUP.md
-```
+Set `RAM_API_URL` in `backend/.env`. Sign-in is interactive by default: the
+header shows **Sign in**, supporting both standalone RAM (Keycloak device
+code) and full Viya (SASLogon paste-the-code) — or set `RAM_TOKEN` /
+`SAS_CLIENT_ID`+`SAS_CLIENT_SECRET` for headless auth. Attachments in chat
+are extracted server-side (PDF/DOCX/text; images are OCR'd with the same
+tesseract engine the Document Processing MCP uses) and inlined into the
+query, since RAM's query API is text-only.

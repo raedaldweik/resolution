@@ -1,6 +1,6 @@
 # Builds the MCP server images and publishes them to GitHub Container Registry
 # so SAS RAM can pull them as Container MCP Server templates:
-#   ghcr.io/<owner>/moce-mcp-tools:latest
+#   ghcr.io/<owner>/moce-document-processing:latest
 #   ghcr.io/<owner>/moce-verify-claims:latest
 #
 # After the first publish, make the packages public (GitHub → Packages →
@@ -24,8 +24,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: moce-mcp-tools
-            context: mcp/moce_tools
+          - name: moce-document-processing
+            context: mcp/document_processing
           - name: moce-verify-claims
             context: mcp/verify_claims
     steps:

@@ -1,0 +1,7 @@
+# dependencies / build output
+node_modules/
+dist/
+
+# local env files (Vite) — secrets like VITE_TOMTOM_API_KEY live here, never commit
+.env.local
+.env.*.local
