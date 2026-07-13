@@ -37,7 +37,7 @@ export default function App() {
   const [meta, setMeta] = useState(null)
 
   useEffect(() => { api.meta().then(setMeta).catch(() => {}) }, [])
-  const live = meta?.mode === 'SAS_LIVE'
+  const live = meta?.mode === 'SAS_LIVE' || meta?.mode === 'LLM_LIVE'
   const reset = async () => { await api.reset(); window.location.reload() }
 
   return (

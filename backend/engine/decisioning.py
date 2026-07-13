@@ -1,15 +1,18 @@
-"""Simulated SAS Intelligent Decisioning.
+"""SAS Intelligent Decisioning — live via MCP, simulated as fallback.
 
-Production swap: rule sets and decision flows are authored in SAS Intelligent
-Decisioning, published to MAS, and executed through the sas-mcp-server tools
-(list_models_and_decisions / score_data and the Tier-7 decisioning tools).
-This module reproduces the observable behavior: versioned rule sets, no-code
-edits, publish, execute-with-rule-fire-trace, and generated DS2 preview.
+Rule sets and decision flows are authored in SAS Intelligent Decisioning and
+published to MAS. When SAS_MCP_URL is set, execute_flow scores the payload on
+the REAL published module through the sas-mcp-server's `score_data` tool
+(see sas_id.py and docs/SAS_ID_SETUP.md); the in-process rules below then only
+render the per-rule fire trace. Without SAS_MCP_URL, the same rules decide the
+outcome (versioned rule sets, no-code edits, publish, DS2 preview).
+Every result carries `executedOn` so the UI can badge honestly.
 """
 
 import copy
 from datetime import datetime, timezone
 
+import sas_id
 from store import store
 
 
@@ -117,10 +120,26 @@ def execute_flow(payload: dict, version: int | None = None):
     ok &= fire("INC-007", "Verification recency", vm <= 12,
                f"verified {vm} month(s) ago")
     outcome = "ELIGIBLE" if ok else "INELIGIBLE"
+    confidence = 0.93 if ok else 0.91
+    executed_on = "Simulated rule engine (in-process)"
+    mas_outputs = None
+
+    if sas_id.enabled():
+        live = sas_id.execute(payload)
+        if live["ok"]:
+            outcome = live["outcome"] or outcome
+            confidence = live["confidence"] if live["confidence"] is not None else confidence
+            executed_on = live["executedOn"]
+            mas_outputs = live["outputs"]
+        else:
+            executed_on = f"Simulated rule engine (SAS ID fallback — {live['error']})"
+
     fires.append({"ruleId": "OUT-001", "name": "Outcome mapping", "passed": True,
                   "detail": f"outcome = {outcome}"})
     return {
         "flow": rs["flowName"], "masModule": rs["masModule"], "version": v,
-        "outcome": outcome, "confidence": 0.93 if ok else 0.91,
+        "outcome": outcome, "confidence": confidence,
         "ruleFires": fires, "threshold": threshold,
+        "executedOn": executed_on, "masOutputs": mas_outputs,
+        "live": mas_outputs is not None,
     }

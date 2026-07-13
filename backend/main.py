@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import live_ram
+import llm_agent
+import sas_id
 from store import store
 from engine import cases as case_engine
 from engine import decisioning, documents, resolution
@@ -71,22 +73,41 @@ class ApproveIn(BaseModel):
 
 # ------------------------------------------------------------------ meta
 
+def _mode() -> str:
+    if live_ram.sas_chat_enabled():
+        return "SAS_LIVE"
+    if llm_agent.llm_chat_enabled():
+        return "LLM_LIVE"
+    return "SIMULATION"
+
+
+def _badge(mode: str) -> str:
+    if mode == "SAS_LIVE":
+        return "LIVE · SAS RAM"
+    if mode == "LLM_LIVE":
+        return ("LIVE · Claude agent + SAS Intelligent Decisioning"
+                if sas_id.enabled() else "LIVE · Claude agent")
+    return "SIMULATION · SAS swap-ready"
+
+
 @app.get("/api/health")
 async def health():
-    return {"status": "ok",
-            "mode": "SAS_LIVE" if live_ram.sas_chat_enabled() else "SIMULATION",
-            "ram": await live_ram.health()}
+    return {"status": "ok", "mode": _mode(),
+            "ram": await live_ram.health(),
+            "llm": llm_agent.health(),
+            "sasDecisioning": sas_id.health()}
 
 
 @app.get("/api/meta")
 def meta():
-    live = live_ram.sas_chat_enabled()
+    mode = _mode()
     return {
-        "mode": "SAS_LIVE" if live else "SIMULATION",
-        "badge": "LIVE · SAS RAM" if live else "SIMULATION · SAS swap-ready",
-        "capabilities": {"chat": "sas" if live else "simulation",
+        "mode": mode,
+        "badge": _badge(mode),
+        "capabilities": {"chat": {"SAS_LIVE": "sas", "LLM_LIVE": "claude"}.get(mode, "simulation"),
                          "documents": "simulation", "cases": "simulation",
-                         "decisioning": "simulation", "governance": "simulation"},
+                         "decisioning": "sas-id-mcp" if sas_id.enabled() else "simulation",
+                         "governance": "simulation"},
         "title": "MoCE Agent Ecosystem",
         "agents": [
             {"key": "documents", "nameEn": "Document Processing", "sas": "SAS RAM agent + OCR pipeline + VTA"},
@@ -125,6 +146,11 @@ async def chat(body: ChatIn):
             return await live_ram.chat(body.sessionId, body.message, body.lang)
         except Exception as e:
             raise HTTPException(502, f"SAS RAM error: {str(e)[:300]}")
+    if llm_agent.llm_chat_enabled():
+        try:
+            return await llm_agent.chat(body.sessionId, body.message, body.lang)
+        except Exception as e:
+            raise HTTPException(502, f"Claude API error: {str(e)[:300]}")
     await asyncio.sleep(0.4)  # a touch of realism
     return resolution.handle_message(body.sessionId, body.message, body.lang)
 
@@ -151,6 +177,7 @@ async def upload(body: UploadIn):
     await asyncio.sleep(1.2)  # OCR feel
     result = documents.process_document(body.sessionId, body.docKey, s["citizenId"])
     followup = resolution.on_document_processed(body.sessionId, result)
+    llm_agent.note_event(body.sessionId, followup["answerEn"])
     return {"document": result, "chat": followup}
 
 
@@ -163,6 +190,9 @@ def review_queue():
 def complete_review(document_id: str, body: ReviewIn):
     item = documents.complete_review(document_id, body.corrections, body.reviewer)
     resolution.on_review_completed(item["sessionId"], item)
+    events = store.sessions.get(item["sessionId"], {}).get("events", [])
+    if events:  # keep the Claude history in step with the injected agent message
+        llm_agent.note_event(item["sessionId"], events[-1]["answerEn"])
     return {"document": item, "status": "APPROVED"}
 
 
@@ -208,6 +238,9 @@ def approve(case_id: str, body: ApproveIn):
                                                    body.decision, body.comment)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    events = store.sessions.get(case.get("sessionId"), {}).get("events", [])
+    if trace_id and events:  # stage-2 close notifies the citizen chat — sync history
+        llm_agent.note_event(case["sessionId"], events[-1]["answerEn"])
     return {"case": case, "executionTraceId": trace_id}
 
 

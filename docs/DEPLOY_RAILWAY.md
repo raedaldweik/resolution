@@ -1,7 +1,12 @@
 # Deploying to Railway — simulation and SAS versions
 
-One repo, one Docker image, two Railway services. The `APP_MODE` environment
-variable decides which version a service runs; everything else is identical.
+One repo, one Docker image, two (or three) Railway services. Environment
+variables decide what each service runs; everything else is identical.
+
+The chat picks its engine by precedence: **SAS RAM** (`APP_MODE=sas`) →
+**Claude agent** (`ANTHROPIC_API_KEY` set) → **scripted simulation** (nothing
+set). SAS Intelligent Decisioning (`SAS_MCP_URL`) is independent — it upgrades
+the decision flow in any of the three modes (see docs/SAS_ID_SETUP.md).
 
 ## Prerequisites
 
@@ -14,6 +19,17 @@ variable decides which version a service runs; everything else is identical.
 2. Railway detects `railway.json` and builds the root `Dockerfile` (frontend build + FastAPI runtime, health check on `/api/health`). No variables needed — `APP_MODE` defaults to `simulation`.
 3. **Settings → Networking → Generate Domain** → e.g. `https://moce-demo.up.railway.app`.
 4. Done. Fully self-contained: scripted engine, no SAS, no LLM keys — the stage-safe version.
+
+> **Recommended upgrade — real Claude agent (`moce-demo-claude`):** add one
+> variable, `ANTHROPIC_API_KEY` (console.anthropic.com → API keys), and the
+> chat switches from the script to a genuine agentic loop on
+> `claude-opus-4-8`: real triage, real tool calls against the demo registries,
+> real token usage in Governance, and a deterministic `verify_claims` gate
+> that blocks + escalates unverifiable amounts. Optional: `ANTHROPIC_MODEL`
+> to override the model. Badge becomes **LIVE · Claude agent**. Add the
+> `SAS_MCP_URL` variables below and eligibility rules execute on real
+> SAS Intelligent Decisioning too (**LIVE · Claude agent + SAS Intelligent
+> Decisioning**).
 
 > If deploying from the working branch, set **Settings → Source → Branch** to
 > `claude/moce-agent-ecosystem-xfonrv`.
@@ -32,6 +48,22 @@ Same repo, second service in the same project (**+ New → GitHub Repo** again).
 | `SAS_USERNAME` / `SAS_PASSWORD` | *(option C, with B's client)* password grant | named-user identity |
 | `SAS_LOGON_URL` | override token endpoint | defaults to `<viya>/SASLogon/oauth/token` |
 | `RAM_VERIFY_SSL` | `false` | only for self-signed certificates |
+
+### SAS Intelligent Decisioning (any service — see docs/SAS_ID_SETUP.md)
+
+| Variable | Value | Notes |
+|---|---|---|
+| `SAS_MCP_URL` | `http://<host>:8134/mcp` | sas-mcp-server in direct HTTP mode |
+| `SAS_MCP_API_KEY` | the server's `MCP_API_KEY` | sent as `X-API-Key` |
+| `SAS_ID_MODULE` | `inflation_allowance_eligibility` | published MAS module (default) |
+| `SAS_ID_STEP` | `execute` | `score` for model modules (default `execute`) |
+
+### Claude agent (chat without RAM)
+
+| Variable | Value | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `sk-ant-…` | enables the real agentic chat loop |
+| `ANTHROPIC_MODEL` | `claude-opus-4-8` | optional override (default shown) |
 
 What "SAS version" means today: **chat runs through the real RAM agent**
 (answers, citations from retrieval calls, full tool/LLM/retrieval trace in

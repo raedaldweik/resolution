@@ -104,10 +104,15 @@ export default function Decisioning() {
           </div>
           {test && (
             <div className="mt-3 fade-up">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge tone={test.outcome === 'ELIGIBLE' ? 'ok' : 'crit'}>{test.outcome}</Badge>
                 <Badge tone="neutral">v{test.version}</Badge>
                 <Badge tone="neutral">confidence {Math.round(test.confidence * 100)}%</Badge>
+                {test.executedOn && (
+                  <Badge tone={test.live ? 'gold' : 'neutral'}>
+                    {test.live ? '⚡ ' : ''}{test.executedOn}
+                  </Badge>
+                )}
               </div>
               <div className="space-y-1">
                 {test.ruleFires.map((f) => (
