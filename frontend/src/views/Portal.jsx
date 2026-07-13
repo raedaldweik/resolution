@@ -1,41 +1,87 @@
 import { useState } from 'react'
 import Chat from '../Chat'
-import { Badge, Card, SectionTitle } from '../ui'
+import { Badge, Card, GovLockup, SectionTitle } from '../ui'
 
 const FATIMA = '784-1985-9384756-1'
+
+const AGENT_ROWS = [
+  { color: '#6d4b9e', en: ['Customer Resolution', 'resolves complaints & inquiries end-to-end'], ar: ['حل شكاوى المتعاملين', 'يحل الشكاوى والاستفسارات من البداية للنهاية'] },
+  { color: '#3a63a8', en: ['Document Processing', 'reads your documents — Arabic & English'], ar: ['معالجة المستندات', 'يقرأ مستنداتك بالعربية والإنجليزية'] },
+  { color: '#0b8a6d', en: ['Knowledge & Decision', 'every answer cited to official policy'], ar: ['المعرفة والقرار', 'كل إجابة موثقة من السياسات الرسمية'] },
+  { color: '#b91c2c', en: ['Guardrails', 'unverified facts are never sent to you'], ar: ['الحوكمة', 'لا تصلك أي معلومات غير موثقة'] },
+]
+
+function Landing({ ar, onSignIn }) {
+  return (
+    <div className="h-full flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
+      <div className="glass-card w-[920px] max-w-[94vw] overflow-hidden">
+        <div className="grid md:grid-cols-[1.15fr_1fr]">
+          {/* left — welcome + sign in */}
+          <div className="p-9 flex flex-col justify-center">
+            <GovLockup large />
+            <h1 className="mt-7 text-[27px] leading-snug font-extrabold text-ink" style={{ textWrap: 'balance' }}>
+              {ar ? 'مرحباً بكم في الخدمات الذكية لوزارة تمكين المجتمع' : 'Welcome to MoCE Intelligent Services'}
+            </h1>
+            <p className="mt-2.5 text-[13.5px] text-muted leading-relaxed max-w-[46ch]">
+              {ar
+                ? 'مساعد ذكي يحل شكاواكم واستفساراتكم فوراً — بإجابات موثقة من السياسات الرسمية وبإشراف بشري كامل.'
+                : 'An intelligent assistant that resolves your complaints and inquiries on the spot — with answers cited to official policy and full human oversight.'}
+            </p>
+            <button onClick={onSignIn}
+              className="mt-6 w-full md:w-[340px] rounded-xl py-3.5 font-bold text-[14.5px] text-white transition hover:opacity-95 hover:-translate-y-px"
+              style={{ background: 'linear-gradient(135deg, #1b2430, #101820 65%)', boxShadow: '0 4px 14px rgba(16,24,32,0.35), inset 0 1px 0 rgba(202,161,75,0.45)' }}>
+              🔐 {ar ? 'تسجيل الدخول عبر الهوية الرقمية UAEPass' : 'Sign in with UAEPass'}
+            </button>
+            <div className="mt-2.5 text-[11px] text-faint">
+              {ar ? '(محاكاة — تسجيل دخول كـ فاطمة المنصوري)' : '(Simulated — signs in as Fatima Al Mansoori)'}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {(ar ? ['متاح ٢٤/٧', 'العربية والإنجليزية', 'إجابات موثقة بالمصادر'] : ['Available 24/7', 'العربية & English', 'Every answer cited']).map((x) => (
+                <span key={x} className="suggestion-chip !cursor-default">{x}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* right — the agent team */}
+          <div className="p-9 border-t md:border-t-0 border-ink/10"
+            style={ar ? { borderRight: '1px solid rgba(15,23,42,0.08)', background: 'linear-gradient(160deg, rgba(182,138,53,0.07), rgba(182,138,53,0.02))' }
+                      : { borderLeft: '1px solid rgba(15,23,42,0.08)', background: 'linear-gradient(160deg, rgba(182,138,53,0.07), rgba(182,138,53,0.02))' }}>
+            <div className="panel-title mb-4">{ar ? 'فريق من الوكلاء المتخصصين في خدمتكم' : 'A team of specialist AI agents at your service'}</div>
+            <div className="space-y-3">
+              {AGENT_ROWS.map((a) => (
+                <div key={a.color} className="glass-strong-card p-3 flex items-start gap-3">
+                  <span className="mt-1 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color }} />
+                  <div>
+                    <div className="text-[13px] font-extrabold text-ink">{ar ? a.ar[0] : a.en[0]}</div>
+                    <div className="text-[11.5px] text-muted mt-0.5">{ar ? a.ar[1] : a.en[1]}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 pt-4 border-t border-ink/10 text-[11px] text-muted leading-relaxed">
+              {ar
+                ? 'القرارات المؤثرة على مزاياكم تخضع دائماً لاعتماد بشري على مرحلتين وفق ميثاق الخدمات الرقمية.'
+                : 'Decisions affecting your benefits always require two-stage human approval under the Digital Services Charter.'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Portal({ lang }) {
   const [signedIn, setSignedIn] = useState(false)
   const ar = lang === 'ar'
 
-  if (!signedIn) {
-    return (
-      <div className="h-full flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
-        <Card className="w-[420px] text-center p-8">
-          <div className="text-4xl mb-3">🇦🇪</div>
-          <h2 className="text-xl font-extrabold">{ar ? 'بوابة خدمات وزارة تمكين المجتمع' : 'MoCE Citizen Services Portal'}</h2>
-          <p className="text-muted text-[13px] mt-2 leading-relaxed">
-            {ar ? 'سجّلي الدخول بالهوية الرقمية للوصول إلى مساعد الحلول الذكي.'
-              : 'Sign in with UAEPass to access the intelligent resolution assistant.'}
-          </p>
-          <button onClick={() => setSignedIn(true)}
-            className="mt-5 w-full bg-[#101820] text-white rounded-xl py-3 font-bold text-[14px] hover:opacity-90 transition">
-            🔐 {ar ? 'تسجيل الدخول عبر UAEPass' : 'Sign in with UAEPass'}
-          </button>
-          <div className="mt-3 text-[11px] text-muted">
-            {ar ? '(محاكاة — تسجيل دخول كـ فاطمة المنصوري)' : '(Simulated — signs in as Fatima Al Mansoori)'}
-          </div>
-        </Card>
-      </div>
-    )
-  }
+  if (!signedIn) return <Landing ar={ar} onSignIn={() => setSignedIn(true)} />
 
   return (
     <div className="h-full grid grid-cols-[1fr_300px] gap-4" dir={ar ? 'rtl' : 'ltr'}>
       <Card className="flex flex-col min-h-0 h-full">
-        <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
+        <div className="flex items-center justify-between pb-3 border-b border-ink/10 mb-3">
           <div>
-            <div className="font-extrabold text-[15px]">
+            <div className="font-extrabold text-[15px] text-ink">
               {ar ? 'مساعد الحلول — وكيل ذكي' : 'Resolution Assistant'}
             </div>
             <div className="text-[11.5px] text-muted">
@@ -53,7 +99,7 @@ export default function Portal({ lang }) {
         <Card>
           <SectionTitle>{ar ? 'ملف المستفيدة' : 'Beneficiary profile'}</SectionTitle>
           <div className="text-[13px] space-y-1.5">
-            <div className="font-bold text-[14px]">{ar ? 'فاطمة المنصوري' : 'Fatima Al Mansoori'}</div>
+            <div className="font-bold text-[14px] text-ink">{ar ? 'فاطمة المنصوري' : 'Fatima Al Mansoori'}</div>
             <div className="text-muted tabnums">784-1985-9384756-1</div>
             <div className="text-muted">{ar ? 'الشارقة · أسرة من 5 أفراد' : 'Sharjah · family of 5'}</div>
           </div>
@@ -63,7 +109,7 @@ export default function Portal({ lang }) {
           <div className="text-[13px]">
             <div className="flex items-center justify-between">
               <span className="font-semibold">{ar ? 'علاوة غلاء المعيشة' : 'Inflation Allowance'}</span>
-              <span className="tabnums font-bold">AED 2,350</span>
+              <span className="tabnums font-bold text-ink">AED 2,350</span>
             </div>
             <div className="text-[11.5px] text-muted mt-1">
               {ar ? 'الحالة تُحدّث مباشرة أثناء المحادثة' : 'Status updates live during the conversation'}
@@ -72,11 +118,11 @@ export default function Portal({ lang }) {
         </Card>
         <Card>
           <SectionTitle>{ar ? 'كيف يعمل' : 'Behind the scenes'}</SectionTitle>
-          <ul className="text-[12px] text-muted space-y-2 leading-relaxed">
-            <li><span className="font-semibold text-agres">● {ar ? 'وكيل الحلول' : 'Resolution agent'}</span> — {ar ? 'ينسّق ويستدعي بقية الوكلاء' : 'orchestrates & calls other agents (A2A)'}</li>
-            <li><span className="font-semibold text-agdoc">● {ar ? 'معالجة المستندات' : 'Document agent'}</span> — {ar ? 'OCR واستخراج بثقة لكل حقل' : 'OCR + per-field confidence extraction'}</li>
-            <li><span className="font-semibold text-agknow">● {ar ? 'المعرفة والقرار' : 'Knowledge agent'}</span> — {ar ? 'سياسات موثقة + مسارات قرار' : 'cited policy + decision flows'}</li>
-            <li><span className="font-semibold text-crit">● {ar ? 'الحوكمة' : 'Guardrails'}</span> — {ar ? 'كل واقعة تُتحقق قبل الإرسال' : 'every fact verified before sending'}</li>
+          <ul className="text-[12px] text-muted space-y-2 leading-relaxed list-none">
+            <li><span className="font-bold text-agres">● {ar ? 'وكيل الحلول' : 'Resolution agent'}</span> — {ar ? 'يفرز: استفسار أم شكوى، ثم ينسّق بقية الوكلاء' : 'triages query vs complaint, then orchestrates the other agents (A2A)'}</li>
+            <li><span className="font-bold text-agdoc">● {ar ? 'معالجة المستندات' : 'Document agent'}</span> — {ar ? 'OCR واستخراج بثقة لكل حقل' : 'OCR + per-field confidence extraction'}</li>
+            <li><span className="font-bold text-agknow">● {ar ? 'المعرفة والقرار' : 'Knowledge agent'}</span> — {ar ? 'سياسات موثقة + مسارات قرار' : 'cited policy + decision flows'}</li>
+            <li><span className="font-bold text-crit">● {ar ? 'الحوكمة' : 'Guardrails'}</span> — {ar ? 'كل واقعة تُتحقق قبل الإرسال' : 'every fact verified before sending'}</li>
           </ul>
         </Card>
       </div>

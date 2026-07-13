@@ -9,7 +9,7 @@ export default {
         muted: '#475569',
         faint: '#94a3b8',
         line: 'rgba(15,23,42,0.09)',
-        brand: { DEFAULT: '#0b6e4f', hi: '#12925f', lo: '#084c37', soft: 'rgba(11,110,79,0.09)' },
+        brand: { DEFAULT: '#8a6a28', hi: '#b68a35', lo: '#6f5520', soft: 'rgba(182,138,53,0.13)' },
         gold: { DEFAULT: '#b68a35', soft: 'rgba(182,138,53,0.13)' },
         // validated categorical palette — color follows the agent, everywhere
         agdoc: '#3a63a8',

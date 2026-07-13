@@ -23,14 +23,14 @@ function AlignmentChart({ history, gates }) {
       <text x={W - PAD.r} y={ys(gates.supervised) - 4} textAnchor="end" fontSize="9.5" fill="#a4660b" fontWeight="700">Supervised autonomy ≥ 90%</text>
       <line x1={PAD.l} x2={W - PAD.r} y1={ys(gates.full)} y2={ys(gates.full)} stroke="#1a7f37" strokeWidth="1.5" strokeDasharray="5 4" />
       <text x={W - PAD.r} y={ys(gates.full) - 4} textAnchor="end" fontSize="9.5" fill="#1a7f37" fontWeight="700">Full autonomy ≥ 95%</text>
-      <path d={path} fill="none" stroke="#0b6a4f" strokeWidth="2" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
       {history.map((h, i) => (
         <circle key={i} cx={xs(i)} cy={ys(h.alignment)} r={i === history.length - 1 ? 4.5 : 3}
-          fill={i === history.length - 1 ? '#0b6a4f' : '#fff'} stroke="#0b6a4f" strokeWidth="1.6">
+          fill={i === history.length - 1 ? '#8a6a28' : '#fff'} stroke="#1e293b" strokeWidth="1.6">
           <title>{h.month}: {(h.alignment * 100).toFixed(1)}% over {h.cases} cases</title>
         </circle>
       ))}
-      <text x={xs(history.length - 1)} y={ys(last.alignment) - 9} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#0b6a4f" className="tabnums">
+      <text x={xs(history.length - 1)} y={ys(last.alignment) - 9} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#8a6a28" className="tabnums">
         {(last.alignment * 100).toFixed(1)}%
       </text>
       {history.map((h, i) => (

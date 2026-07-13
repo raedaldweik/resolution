@@ -140,7 +140,7 @@ export default function Decisioning() {
         </Card>
         <Card>
           <SectionTitle>Generated score code (DS2)</SectionTitle>
-          <pre className="text-[10.5px] leading-relaxed bg-[#0e3d2f] text-[#d9efe6] rounded-xl p-3.5 overflow-x-auto">{st.ds2Preview}</pre>
+          <pre className="text-[10.5px] leading-relaxed bg-[#1c2430] text-[#e8d9b0] rounded-xl p-3.5 overflow-x-auto">{st.ds2Preview}</pre>
           <div className="mt-2 text-[11.5px] text-muted">
             Published to SAS Micro Analytic Service — millisecond scoring, callable by every agent through MCP.
           </div>

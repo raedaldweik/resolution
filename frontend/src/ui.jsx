@@ -1,3 +1,4 @@
+import { useState } from 'react'
 // Shared UI primitives — glass design system (Finance/NCGR assistant recipe, MoCE theme).
 // Agent identity colors are fixed (validated palette):
 // documents #3a63a8 · knowledge #0b8a6d · case #a4660b · resolution #6d4b9e
@@ -109,6 +110,49 @@ export function Markdownish({ text, className = '' }) {
       {parts.map((p, i) =>
         p.startsWith('**') ? <strong key={i}>{p.slice(2, -2)}</strong> : <span key={i}>{p}</span>
       )}
+    </div>
+  )
+}
+
+export function UAEFlag({ className = '', rounded = true }) {
+  return (
+    <svg viewBox="0 0 60 40" className={className} role="img" aria-label="Flag of the United Arab Emirates"
+      style={{ borderRadius: rounded ? 6 : 0, boxShadow: '0 1px 4px rgba(15,23,42,0.25)' }}>
+      <rect width="60" height="40" fill="#ffffff" />
+      <rect width="60" height="13.4" fill="#009a44" />
+      <rect y="26.6" width="60" height="13.4" fill="#141414" />
+      <rect width="16" height="40" fill="#ce1126" />
+    </svg>
+  )
+}
+
+/* Official horizontal logo when frontend/public/moce-logo.png exists
+   (download from moce.gov.ae — the gov site blocks server-side fetches);
+   otherwise a faithful federal-identity lockup: flag + bilingual names. */
+export function GovLockup({ large = false }) {
+  const [hasImg, setHasImg] = useState(true)
+  if (hasImg) {
+    return (
+      <img src="/moce-logo.png" alt="UAE Ministry of Community Empowerment"
+        onError={() => setHasImg(false)}
+        style={{ height: large ? 84 : 46, width: 'auto', objectFit: 'contain', display: 'block',
+                 filter: 'drop-shadow(0 1px 2px rgba(15,23,42,0.08))' }} />
+    )
+  }
+  return (
+    <div className="gov-lockup">
+      <UAEFlag className={large ? 'w-[72px]' : 'w-[46px]'} />
+      <div>
+        <div className="lockup-name-en" style={large ? { fontSize: 15 } : undefined}>UNITED ARAB EMIRATES</div>
+        <div className="lockup-name-en" style={{ fontWeight: 600, fontSize: large ? 12.5 : 11, color: 'var(--text-dim)' }}>
+          MINISTRY OF COMMUNITY EMPOWERMENT
+        </div>
+      </div>
+      <div className="lockup-divider" style={large ? { height: 46 } : undefined} />
+      <div>
+        <div className="lockup-name-ar" style={large ? { fontSize: 15 } : undefined}>الإمارات العربية المتحدة</div>
+        <div className="lockup-name-ar" style={{ fontSize: large ? 14 : 11.5 }}>وزارة تمكين المجتمع</div>
+      </div>
     </div>
   )
 }

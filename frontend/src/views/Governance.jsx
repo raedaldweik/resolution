@@ -7,7 +7,7 @@ function ConfidenceHistogram({ data }) {
   const W = 480, H = 150, PAD = { l: 8, r: 8, t: 18, b: 20 }
   const max = Math.max(...data.map((d) => d.count))
   const bw = (W - PAD.l - PAD.r) / data.length
-  const ramp = ['#cfe5db', '#a5cfbe', '#77b59e', '#3f9377', '#0b6a4f']
+  const ramp = ['#eadfc3', '#dcc48e', '#c9a55e', '#b68a35', '#8a6a28']
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Recommendation confidence distribution, 30 days">
       {data.map((d, i) => {
@@ -21,7 +21,7 @@ function ConfidenceHistogram({ data }) {
               <title>{d.bucket}: {d.count.toLocaleString()} recommendations</title>
             </rect>
             {isMax && (
-              <text x={x + (bw - 6) / 2} y={y - 5} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#0b6a4f" className="tabnums">
+              <text x={x + (bw - 6) / 2} y={y - 5} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#8a6a28" className="tabnums">
                 {d.count.toLocaleString()}
               </text>
             )}

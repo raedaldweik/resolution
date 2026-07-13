@@ -4,12 +4,16 @@
 @tailwind utilities;
 
 :root {
-  /* MoCE theme — same token recipe as the Finance/NCGR assistant, re-skinned */
-  --green: #0b6e4f;
-  --green-hi: #12925f;
-  --green-lo: #084c37;
-  --green-grad: linear-gradient(135deg, #12925f, #0b6e4f, #084c37);
+  /* MoCE theme — UAE federal identity: gold + charcoal (green kept for OK status) */
+  --brand: #8a6a28;          /* deep UAE gold (text-safe) */
+  --brand-mid: #b68a35;      /* UAE gold */
+  --brand-hi: #caa14b;
+  --brand-grad: linear-gradient(135deg, #caa14b, #b68a35, #8a6a28);
+  --charcoal: #1c2733;
+  --charcoal-grad: linear-gradient(135deg, #2b3644, #1c2733 60%, #141d27);
   --uae-gold: #b68a35;
+  --uae-red: #ce1126;
+  --uae-green: #009a44;
 
   /* Ink ladder */
   --text: #0a1628;
@@ -71,7 +75,7 @@ body {
   content: '';
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 40% 32% at 75% 25%, rgba(160, 190, 170, 0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 32% at 75% 25%, rgba(200, 175, 120, 0.14) 0%, transparent 65%),
     radial-gradient(ellipse 35% 28% at 20% 70%, rgba(140, 180, 220, 0.14) 0%, transparent 65%),
     radial-gradient(ellipse 30% 30% at 85% 75%, rgba(220, 185, 130, 0.10) 0%, transparent 65%);
   pointer-events: none; z-index: 0;
@@ -86,10 +90,10 @@ body {
   will-change: opacity, transform;
   mix-blend-mode: multiply;
 }
-.mega-green  { background: radial-gradient(circle, rgba(120, 180, 155, 0.30) 0%, rgba(120, 180, 155, 0.08) 35%, transparent 70%); filter: blur(28px); }
+.mega-green  { background: radial-gradient(circle, rgba(205, 175, 115, 0.28) 0%, rgba(205, 175, 115, 0.08) 35%, transparent 70%); filter: blur(28px); }
 .mega-blue   { background: radial-gradient(circle, rgba(150, 195, 225, 0.28) 0%, rgba(150, 195, 225, 0.07) 35%, transparent 70%); filter: blur(30px); }
 .mega-gold   { background: radial-gradient(circle, rgba(220, 185, 130, 0.30) 0%, rgba(220, 185, 130, 0.08) 35%, transparent 70%); filter: blur(26px); }
-.blob-green  { background: radial-gradient(circle, rgba(120, 180, 155, 0.26) 0%, rgba(120, 180, 155, 0.06) 50%, transparent 80%); filter: blur(12px); }
+.blob-green  { background: radial-gradient(circle, rgba(205, 175, 115, 0.24) 0%, rgba(205, 175, 115, 0.06) 50%, transparent 80%); filter: blur(12px); }
 .blob-gold   { background: radial-gradient(circle, rgba(220, 185, 130, 0.28) 0%, rgba(220, 185, 130, 0.07) 50%, transparent 80%); filter: blur(10px); }
 .blob-blue   { background: radial-gradient(circle, rgba(150, 195, 225, 0.24) 0%, rgba(150, 195, 225, 0.06) 50%, transparent 80%); filter: blur(12px); }
 
@@ -120,19 +124,19 @@ body {
 .gov-lockup { display: flex; align-items: center; gap: 13px; flex-shrink: 0; }
 .gov-emblem {
   width: 44px; height: 44px; border-radius: 12px;
-  background: var(--green-grad);
+  background: var(--charcoal-grad);
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 21px;
-  box-shadow: 0 2px 8px rgba(8, 76, 55, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 2px 8px rgba(20, 29, 39, 0.35), inset 0 1px 0 rgba(255,255,255,0.18);
 }
 .lockup-divider { width: 1px; height: 34px; background: linear-gradient(180deg, transparent, var(--uae-gold), transparent); }
 .lockup-name-en { font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: 0.02em; line-height: 1.35; }
-.lockup-name-ar { font-size: 12.5px; font-weight: 600; color: var(--green-lo); line-height: 1.35; font-family: 'IBM Plex Sans Arabic', sans-serif; }
+.lockup-name-ar { font-size: 12.5px; font-weight: 600; color: var(--brand); line-height: 1.35; font-family: 'IBM Plex Sans Arabic', sans-serif; }
 .app-title { font-size: 19px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; white-space: nowrap; }
 .accent-line {
   flex: 1; min-width: 24px; height: 1px;
-  background: linear-gradient(90deg, var(--green-hi) 0%, var(--green) 50%, rgba(11,110,79,0.4) 80%, transparent 100%);
-  box-shadow: 0 0 6px rgba(11,110,79,0.25);
+  background: linear-gradient(90deg, var(--brand-hi) 0%, var(--brand-mid) 50%, rgba(182,138,53,0.4) 80%, transparent 100%);
+  box-shadow: 0 0 6px rgba(182,138,53,0.30);
 }
 .status-pill {
   display: inline-flex; align-items: center; gap: 8px;
@@ -170,10 +174,10 @@ body {
 .view-tab.active {
   background: var(--glass-strong);
   color: var(--text);
-  border-color: rgba(11,110,79,0.25);
-  box-shadow: 0 3px 10px rgba(11,110,79,0.12), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -2px 0 var(--tab-accent, var(--green));
+  border-color: rgba(182,138,53,0.35);
+  box-shadow: 0 3px 10px rgba(182,138,53,0.14), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -2px 0 var(--tab-accent, var(--brand-mid));
 }
-.view-tab .tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tab-accent, var(--green)); opacity: .85; }
+.view-tab .tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tab-accent, var(--brand-mid)); opacity: .85; }
 
 /* ═══ Glass panels ═══ */
 .glass-card {
@@ -204,28 +208,28 @@ body {
   color: var(--text);
   text-transform: uppercase;
   padding-left: 8px;
-  border-left: 2px solid var(--green);
+  border-left: 2px solid var(--brand-mid);
   line-height: 1.3;
-  box-shadow: -1px 0 0 rgba(11,110,79,0.15);
+  box-shadow: -1px 0 0 rgba(182,138,53,0.2);
 }
-[dir='rtl'] .panel-title { padding-left: 0; padding-right: 8px; border-left: none; border-right: 2px solid var(--green); }
+[dir='rtl'] .panel-title { padding-left: 0; padding-right: 8px; border-left: none; border-right: 2px solid var(--brand-mid); }
 
 /* ═══ Chat bubbles ═══ */
 .msg-bot-bubble {
   background: var(--glass-strong);
   backdrop-filter: blur(12px);
   border: 1px solid var(--hairline);
-  border-left: 3px solid var(--green);
+  border-left: 3px solid var(--brand-mid);
   border-radius: 14px;
   border-top-left-radius: 4px;
   box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 10px rgba(15,23,42,0.05);
 }
-[dir='rtl'] .msg-bot-bubble { border-left: 1px solid var(--hairline); border-right: 3px solid var(--green); border-top-left-radius: 14px; border-top-right-radius: 4px; }
+[dir='rtl'] .msg-bot-bubble { border-left: 1px solid var(--hairline); border-right: 3px solid var(--brand-mid); border-top-left-radius: 14px; border-top-right-radius: 4px; }
 .msg-bot-bubble.blocked { border-left-color: var(--red); background: linear-gradient(180deg, rgba(253,246,245,0.92), rgba(253,246,245,0.80)); }
 [dir='rtl'] .msg-bot-bubble.blocked { border-right-color: var(--red); }
 .msg-user-bubble {
-  background: linear-gradient(135deg, rgba(11,110,79,0.10), rgba(11,110,79,0.04));
-  border: 1px solid rgba(11,110,79,0.16);
+  background: linear-gradient(135deg, rgba(182,138,53,0.13), rgba(182,138,53,0.05));
+  border: 1px solid rgba(182,138,53,0.22);
   border-radius: 14px;
   border-top-right-radius: 4px;
 }
@@ -237,7 +241,7 @@ body {
   font-size: 14px;
   box-shadow: 0 1px 3px rgba(15,23,42,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
 }
-.avatar-bot { background: var(--green-grad); color: #fff; }
+.avatar-bot { background: var(--charcoal-grad); color: #fff; }
 .avatar-user { background: linear-gradient(135deg, #64748b, #475569); color: #fff; }
 
 /* ═══ Suggestion chips ═══ */
@@ -253,14 +257,14 @@ body {
   box-shadow: 0 1px 2px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 .suggestion-chip:hover {
-  background: var(--green); color: #fff; border-color: var(--green);
+  background: var(--brand); color: #fff; border-color: var(--brand);
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(11,110,79,0.25);
+  box-shadow: 0 3px 10px rgba(138,106,40,0.3);
 }
 
 /* ═══ Buttons & inputs ═══ */
 .btn-primary {
-  background: var(--green-grad); color: #fff;
+  background: var(--charcoal-grad); color: #fff;
   border: none; border-radius: 10px;
   font-weight: 700; cursor: pointer; transition: all .18s;
   box-shadow: 0 2px 8px rgba(8,76,55,0.28), inset 0 1px 0 rgba(255,255,255,0.22);
@@ -284,7 +288,7 @@ body {
   box-shadow: inset 0 1px 2px rgba(15,23,42,0.04);
   color: var(--text);
 }
-.glass-input:focus { border-color: rgba(11,110,79,0.45); box-shadow: 0 0 0 3px rgba(11,110,79,0.10); }
+.glass-input:focus { border-color: rgba(182,138,53,0.55); box-shadow: 0 0 0 3px rgba(182,138,53,0.12); }
 
 /* ═══ Misc ═══ */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -302,4 +306,4 @@ body {
 
 .md-strong strong { font-weight: 800; color: var(--text); }
 
-:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: 2px; }

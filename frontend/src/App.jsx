@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from './api'
+import { GovLockup } from './ui'
 import Portal from './views/Portal'
 import ContactCenter from './views/ContactCenter'
 import Documents from './views/Documents'
@@ -13,8 +14,9 @@ const NAV = [
   { key: 'documents', icon: '📄', label: 'Document Review', accent: '#3a63a8' },
   { key: 'cases', icon: '🗂️', label: 'Case Management', accent: '#a4660b' },
   { key: 'decisioning', icon: '⚖️', label: 'Decision Studio', accent: '#0b8a6d' },
-  { key: 'governance', icon: '🛡️', label: 'Governance', accent: '#084c37' },
+  { key: 'governance', icon: '🛡️', label: 'Governance', accent: '#8a6a28' },
 ]
+
 
 function Bokeh() {
   return (
@@ -40,20 +42,7 @@ export default function App() {
       <Bokeh />
 
       <header className="app-header">
-        <div className="gov-lockup">
-          <div className="gov-emblem">🇦🇪</div>
-          <div>
-            <div className="lockup-name-en">UNITED ARAB EMIRATES</div>
-            <div className="lockup-name-en" style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-dim)' }}>
-              MINISTRY OF COMMUNITY EMPOWERMENT
-            </div>
-          </div>
-          <div className="lockup-divider" />
-          <div>
-            <div className="lockup-name-ar">الإمارات العربية المتحدة</div>
-            <div className="lockup-name-ar" style={{ fontSize: '11.5px' }}>وزارة تمكين المجتمع</div>
-          </div>
-        </div>
+        <GovLockup />
         <div className="accent-line" />
         <div className="app-title">Agent Ecosystem</div>
         <div className="status-pill"><span className="status-dot" /> SIMULATION · SAS swap-ready</div>
