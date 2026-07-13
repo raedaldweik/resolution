@@ -111,6 +111,27 @@ def _seed_policies():
                  "exceeding six months.",
          "textAr": "إذا كان التعليق ناتجاً فقط عن انتهاء صلاحية التحقق من الدخل وأكد التحقق المجدد استمرار "
                    "الاستحقاق، تُعاد العلاوة وتُصرف الأقساط الموقوفة بأثر رجعي لمدة لا تتجاوز ستة أشهر."},
+        {"docId": "POL-2024-017", "title": "Inflation Allowance Programme — Application Requirements",
+         "titleAr": "برنامج علاوة غلاء المعيشة — متطلبات التقديم",
+         "article": "Art. 5.3", "page": 16, "lang": "en/ar",
+         "text": "Applications require: (a) valid Emirates ID; (b) a salary certificate issued "
+                 "within 90 days for each employed household member; (c) an IBAN letter from a "
+                 "UAE bank; and (d) the family book (khulasat al-qaid). Applications are "
+                 "submitted through the MoCE portal or service centres; processing takes up to "
+                 "10 working days.",
+         "textAr": "يتطلب التقديم: (أ) هوية إماراتية سارية؛ (ب) شهادة راتب صادرة خلال 90 يوماً لكل فرد عامل في "
+                   "الأسرة؛ (ج) رسالة IBAN من مصرف في الدولة؛ (د) خلاصة القيد. تُقدَّم الطلبات عبر بوابة الوزارة "
+                   "أو مراكز الخدمة، وتستغرق المعالجة حتى 10 أيام عمل."},
+        {"docId": "POL-2024-017", "title": "Inflation Allowance Programme — Allowance Amounts (Schedule B)",
+         "titleAr": "برنامج علاوة غلاء المعيشة — قيمة العلاوة (الجدول ب)",
+         "article": "Sch. B", "page": 31, "lang": "en/ar",
+         "text": "The base allowance is AED 2,350 per month per eligible household. A dependant "
+                 "supplement of AED 350 per month applies for each dependant beyond the fourth, "
+                 "capped at AED 3,400 total. Amounts are reviewed annually against the consumer "
+                 "price index.",
+         "textAr": "قيمة العلاوة الأساسية 2,350 درهماً شهرياً لكل أسرة مستحقة، مع علاوة إعالة قدرها 350 درهماً "
+                   "شهرياً عن كل معال بعد الرابع وبحد أقصى 3,400 درهم. وتُراجع المبالغ سنوياً وفق مؤشر أسعار "
+                   "المستهلك."},
         {"docId": "POL-2025-003", "title": "Digital Services Charter — Human Review Guarantees",
          "titleAr": "ميثاق الخدمات الرقمية — ضمانات المراجعة البشرية",
          "article": "Art. 2.4", "page": 5, "lang": "en/ar",
@@ -214,6 +235,10 @@ def _seed_metrics():
         "tokenCostByAgentUSD": {"documents": 41.20, "knowledge": 118.75,
                                 "case": 63.40, "resolution": 92.10},
         "containmentRate": 0.81,
+        # triage of inbound contacts: most "complaints" are really questions —
+        # the agent answers those from the knowledge base without opening a case
+        "triage30d": {"queries": 2988, "complaints": 1204, "serviceRequests": 620},
+        "queryDeflectionRate": 0.62,
     }
 
 

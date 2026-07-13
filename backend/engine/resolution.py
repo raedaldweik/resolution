@@ -37,7 +37,8 @@ def _suggestions(stage, lang_pair=True):
     s = {
         "start": [
             {"en": "Why did my inflation allowance payment stop?", "ar": "لماذا توقفت علاوة غلاء المعيشة الخاصة بي؟"},
-            {"en": "Am I eligible for the inflation allowance?", "ar": "هل أنا مؤهلة لعلاوة غلاء المعيشة؟"},
+            {"en": "What documents do I need to apply for the inflation allowance?", "ar": "ما المستندات المطلوبة للتقديم على علاوة غلاء المعيشة؟"},
+            {"en": "How much is the inflation allowance?", "ar": "كم تبلغ قيمة علاوة غلاء المعيشة؟"},
         ],
         "awaiting_doc": [
             {"en": "📎 Upload salary certificate (scanned copy)", "ar": "📎 رفع شهادة الراتب (نسخة ممسوحة)", "action": "upload:salary_cert_blurry"},
@@ -69,6 +70,20 @@ def _sentiment(session, text):
     return session["sentiment"]
 
 
+def _triage(text: str) -> dict:
+    """Complaint-vs-query triage. Many inbound 'complaints' are really general
+    questions — those are answered from the knowledge base with citations and
+    never open a case. Personal service-failure markers make it a COMPLAINT."""
+    tl = text.lower()
+    if any(w in tl for w in STOP_WORDS_INTENT) or any(w in tl for w in NEG_WORDS):
+        return {"type": "COMPLAINT", "confidence": 0.94,
+                "detailEn": "personal service issue detected → investigation opened",
+                "detailAr": "مشكلة خدمة شخصية ← فتح تحقيق"}
+    return {"type": "QUERY", "confidence": 0.96,
+            "detailEn": "general question → answered from knowledge base, no case opened",
+            "detailAr": "سؤال عام ← إجابة من قاعدة المعرفة دون فتح حالة"}
+
+
 def handle_message(session_id: str, text: str, lang: str = "en"):
     session = store.sessions[session_id]
     citizen = store.citizens[session["citizenId"]]
@@ -82,22 +97,25 @@ def handle_message(session_id: str, text: str, lang: str = "en"):
     if session["stage"] == "resolution_proposed" and any(w in tl for w in CONFIRM_WORDS):
         return _execute_resolution(session, citizen, text)
 
-    if any(w in tl for w in STOP_WORDS_INTENT) or session["stage"] == "start" and ("علاوة" in text or "allowance" in tl):
-        return _investigate(session, citizen, text)
-
     if "status" in tl or "حالة" in text:
         return _case_status(session, citizen, text)
 
     if "review" in tl or "المراجعة" in text:
         return _explain_review(session, citizen, text)
 
-    return _policy_answer(session, citizen, text)
+    triage = _triage(text)
+    if triage["type"] == "COMPLAINT":
+        return _investigate(session, citizen, text, triage)
+    return _policy_answer(session, citizen, text, triage)
 
 
 # ---------------------------------------------------------------- investigate
 
-def _investigate(session, citizen, text):
+def _investigate(session, citizen, text, triage=None):
     t = Trace("Customer Resolution Agent", session["channel"], text, session["sessionId"])
+    if triage:
+        t.llm("triage", "Classify inbound contact: complaint vs query vs service request…",
+              f"{triage['type']} ({triage['confidence']})", 420, 18, 210)
     ben = citizen["benefits"][0]
     t.tool("get_citizen_profile", "registry-mcp",
            {"emiratesId": citizen["emiratesId"], "auth": "UAEPass" if session["channel"] == "citizen" else "agent-console"},
@@ -127,8 +145,9 @@ def _investigate(session, citizen, text):
                  f"لإعادة التحقق من دخلك، يرجى رفع **شهادة راتب** حديثة (صادرة خلال 90 يوماً)، وسأعالجها فوراً.")
     t.done("Suspension cause identified; requested renewed salary certificate")
     session["stage"] = "awaiting_doc"
-    return _msg(session, answer_en, answer_ar, t.rec["traceId"],
+    return _msg(session, answer_en, answer_ar, t.rec["traceId"], triage=triage,
                 activity=[
+                    {"agent": "guard", "labelEn": f"Triage: COMPLAINT (94%) — {triage['detailEn'] if triage else 'investigation'}", "labelAr": f"الفرز: شكوى (94%) — {triage['detailAr'] if triage else ''}"},
                     {"agent": "resolution", "labelEn": "Verified identity via UAEPass", "labelAr": "التحقق من الهوية عبر الهوية الرقمية"},
                     {"agent": "resolution", "labelEn": "Retrieved benefit record — SUSPENDED (verification expired)", "labelAr": "استرجاع سجل المنفعة — معلّقة (انتهاء التحقق)"},
                     {"agent": "knowledge", "labelEn": "Retrieved policy POL-2024-017 Art. 4.2 & 7.1 (cited)", "labelAr": "استرجاع السياسة POL-2024-017 المادتين 4.2 و7.1"},
@@ -328,24 +347,66 @@ def _explain_review(session, citizen, text):
     return _msg(session, en, ar, t.rec["traceId"], citations=chunks)
 
 
-def _policy_answer(session, citizen, text):
+def _policy_answer(session, citizen, text, triage=None):
+    """QUERY path — the client's key ask: many complaints are really questions,
+    so triage detects them and answers straight from the knowledge base with
+    citations. No case, no investigation, instant resolution."""
     t = Trace("Customer Resolution Agent", session["channel"], text, session["sessionId"])
-    chunks = knowledge.retrieve(text)
+    if triage:
+        t.llm("triage", "Classify inbound contact: complaint vs query vs service request…",
+              f"{triage['type']} ({triage['confidence']})", 420, 18, 210)
+    tl = text.lower()
+
+    def chunk_for(article):
+        p = next(p for p in store.policies if p["article"] == article)
+        return {"docId": p["docId"], "title": p["title"], "titleAr": p["titleAr"],
+                "article": p["article"], "page": p["page"], "score": 0.95,
+                "textPreview": p["text"][:260], "textPreviewAr": p["textAr"][:260]}
+
+    if any(w in tl for w in ("document", "apply", "application", "papers")) or "مستندات" in text or "التقديم" in text:
+        chunks = [chunk_for("Art. 5.3")]
+        en = ("To apply for the Inflation Allowance you need (POL-2024-017 Art. 5.3):\n\n"
+              "1. A valid **Emirates ID**\n2. A **salary certificate** issued within 90 days for each "
+              "employed household member\n3. An **IBAN letter** from a UAE bank\n4. The **family book** "
+              "(khulasat al-qaid)\n\nYou can apply through this portal or any MoCE service centre — "
+              "processing takes up to **10 working days**. Would you like me to start an application for you?")
+        ar = ("للتقديم على علاوة غلاء المعيشة تحتاجين (POL-2024-017 المادة 5.3):\n\n"
+              "1. **هوية إماراتية** سارية\n2. **شهادة راتب** صادرة خلال 90 يوماً لكل فرد عامل في الأسرة\n"
+              "3. **رسالة IBAN** من مصرف في الدولة\n4. **خلاصة القيد**\n\nيمكنك التقديم عبر هذه البوابة أو أي "
+              "مركز خدمة تابع للوزارة — وتستغرق المعالجة حتى **10 أيام عمل**. هل ترغبين أن أبدأ طلباً لك؟")
+    elif any(w in tl for w in ("how much", "amount", "value")) or "كم" in text or "قيمة" in text:
+        chunks = [chunk_for("Sch. B")]
+        en = ("The Inflation Allowance is **AED 2,350 per month** per eligible household "
+              "(POL-2024-017 Schedule B). A dependant supplement of **AED 350/month** applies for each "
+              "dependant beyond the fourth, capped at **AED 3,400** total. Amounts are reviewed annually "
+              "against the consumer price index.")
+        ar = ("تبلغ علاوة غلاء المعيشة **2,350 درهماً شهرياً** لكل أسرة مستحقة (الجدول ب). وتُضاف علاوة إعالة "
+              "قدرها **350 درهماً شهرياً** عن كل معال بعد الرابع وبحد أقصى **3,400 درهم**. وتُراجع المبالغ سنوياً "
+              "وفق مؤشر أسعار المستهلك.")
+    else:
+        chunks = [chunk_for("Art. 4.2")]
+        en = ("Based on the Inflation Allowance Programme policy (POL-2024-017 Art. 4.2): the allowance is "
+              "payable to Emirati heads of household whose verified gross monthly income does not exceed "
+              "**AED 25,000**, with income re-verification every 12 months. If you'd like, I can check your "
+              "specific record — just ask about your payments or eligibility.")
+        ar = ("استناداً إلى سياسة برنامج علاوة غلاء المعيشة (POL-2024-017 المادة 4.2): تُصرف العلاوة لأرباب الأسر "
+              "من مواطني الدولة الذين لا يتجاوز دخلهم الشهري الإجمالي الموثق **25,000 درهم**، مع إعادة التحقق من "
+              "الدخل كل 12 شهراً. إن أحببت، يمكنني فحص سجلك مباشرة — فقط اسألني عن دفعاتك أو أهليتك.")
+
     t.retrieval("MoCE Policy Library", text, chunks, ms=350)
     t.llm("grounded response", "Answer strictly from retrieved policy with citations…",
-          "Eligibility summary with citations", 1100, 190, 760)
-    t.done("Policy answer with citations")
-    en = ("Based on the Inflation Allowance Programme policy (POL-2024-017 Art. 4.2): the allowance is "
-          "payable to Emirati heads of household whose verified gross monthly income does not exceed "
-          "AED 25,000, with income re-verification every 12 months. If you'd like, I can check your "
-          "specific record — just ask about your payments or eligibility.")
-    ar = ("استناداً إلى سياسة برنامج علاوة غلاء المعيشة (POL-2024-017 المادة 4.2): تُصرف العلاوة لأرباب الأسر "
-          "من مواطني الدولة الذين لا يتجاوز دخلهم الشهري الإجمالي الموثق 25,000 درهم، مع إعادة التحقق من الدخل "
-          "كل 12 شهراً. إن أحببت، يمكنني فحص سجلك مباشرة — فقط اسألني عن دفعاتك أو أهليتك.")
-    return _msg(session, en, ar, t.rec["traceId"], citations=chunks)
+          "Knowledge-base answer with citations", 1100, 190, 760)
+    t.done("QUERY resolved from knowledge base — no case opened")
+    return _msg(session, en, ar, t.rec["traceId"], citations=chunks, triage=triage,
+                activity=[
+                    {"agent": "guard", "labelEn": "Triage: QUERY (96%) — answerable from knowledge base, no case opened", "labelAr": "الفرز: استفسار (96%) — إجابة من قاعدة المعرفة دون فتح حالة"},
+                    {"agent": "knowledge", "labelEn": f"Retrieved {chunks[0]['docId']} {chunks[0]['article']} (cited)", "labelAr": f"استرجاع {chunks[0]['docId']} {chunks[0]['article']}"},
+                    {"agent": "guard", "labelEn": "verify_claims: all facts traced to policy text", "labelAr": "التحقق: جميع الوقائع موثقة من نص السياسة"},
+                ])
 
 
-def _msg(session, en, ar, trace_id, activity=None, citations=None, blocked=False, escalation_id=None):
+def _msg(session, en, ar, trace_id, activity=None, citations=None, blocked=False,
+         escalation_id=None, triage=None):
     msg = {
         "messageId": next_id("MSG"), "answerEn": en, "answerAr": ar,
         "traceId": trace_id, "blocked": blocked, "escalationId": escalation_id,
@@ -353,6 +414,7 @@ def _msg(session, en, ar, trace_id, activity=None, citations=None, blocked=False
         "sentiment": session["sentiment"], "stage": session["stage"],
         "suggestions": _suggestions(session["stage"]),
         "caseId": session.get("caseId"),
+        "triage": triage,
     }
     session["messages"].append(msg)
     return msg

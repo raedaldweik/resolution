@@ -45,7 +45,7 @@ function CostByAgent({ costs }) {
       {entries.map(([k, v]) => (
         <div key={k} className="flex items-center gap-2.5 text-[12px]">
           <span className="w-24 shrink-0 font-semibold" style={{ color: AGENTS[k].color }}>{AGENTS[k].short}</span>
-          <span className="flex-1 h-2.5 rounded-full bg-line/60 overflow-hidden">
+          <span className="flex-1 h-2.5 rounded-full bg-ink/10 overflow-hidden">
             <span className="block h-full rounded-full" style={{ width: `${(v / max) * 100}%`, background: AGENTS[k].color }} />
           </span>
           <span className="tabnums text-muted w-16 text-right">${v.toFixed(2)}</span>
@@ -78,6 +78,8 @@ export default function Governance() {
         <Stat label="Hallucination rate" value={`${(metrics.hallucinationRate * 100).toFixed(2)}%`}
           sub={`${metrics.hallucinationBlocks30d} blocked · target ≤ 0.5%`} tone="text-ok" />
         <Stat label="Avg. recommendation confidence" value={`${Math.round(metrics.avgConfidence * 100)}%`} sub="all agents, 30 days" />
+        <Stat label="Queries deflected" value={`${Math.round((metrics.queryDeflectionRate || 0) * 100)}%`}
+          sub={`${(metrics.triage30d?.queries || 0).toLocaleString()} contacts triaged as questions — answered from the knowledge base, no case`} tone="text-agknow" />
         <Stat label="Containment" value={`${Math.round(metrics.containmentRate * 100)}%`} sub="resolved without human handoff" />
       </div>
 

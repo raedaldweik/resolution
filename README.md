@@ -13,7 +13,11 @@ One story travels through all four agents — **Fatima's Inflation Allowance**:
 1. **Citizen Portal** — sign in with UAEPass (mock), ask *"Why did my inflation allowance
    payment stop?"* (English or Arabic, full RTL). The Customer Resolution agent investigates:
    identity → benefit record (SUSPENDED, verification expired) → cited policy answer.
-2. **Upload the scanned salary certificate** (suggestion chip). The Document Processing agent
+2. **Query triage** — ask *"What documents do I need to apply?"* first: the agent triages the
+   contact (many "complaints" are really questions) as a **QUERY** and answers it instantly from
+   the knowledge base with citations — **no case opened**. Complaint markers route to investigation
+   instead; the triage decision is visible on every answer and in the Governance "queries deflected" KPI.
+3. **Upload the scanned salary certificate** (suggestion chip). The Document Processing agent
    runs OCR → classification (96%) → schema-driven extraction. One field (income, 74%) falls
    below its threshold → routed to human review. **HITL demonstrated, not claimed.**
 3. **Document Review** — reviewer sees the annotated certificate, corrects the field,

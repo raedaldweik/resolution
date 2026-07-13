@@ -51,7 +51,7 @@ export default function Decisioning() {
           </SectionTitle>
           <div className="text-[12px] text-muted mb-3">
             Decision flow <span className="font-semibold text-ink">{st.flowName}</span> · MAS module{' '}
-            <code className="bg-line/50 px-1.5 py-0.5 rounded text-[11px]">{st.masModule}</code> — in production this
+            <code className="bg-ink/5 px-1.5 py-0.5 rounded text-[11px]">{st.masModule}</code> — in production this
             screen <em>is</em> SAS Intelligent Decisioning; MoCE analysts author and publish without any vendor.
           </div>
           <div className="overflow-x-auto">
@@ -69,7 +69,7 @@ export default function Decisioning() {
                   <tr key={r.ruleId} className="border-t border-line align-middle">
                     <td className="py-2 pr-3 font-bold tabnums">{r.ruleId}</td>
                     <td className="py-2 pr-3">{r.name}</td>
-                    <td className="py-2 pr-3"><code className="text-[11px] bg-line/40 rounded px-1.5 py-0.5">{r.expression}</code></td>
+                    <td className="py-2 pr-3"><code className="text-[11px] bg-ink/5 rounded px-1.5 py-0.5">{r.expression}</code></td>
                     <td className="py-2">
                       {r.ruleId === 'INC-004' ? (
                         <span className="flex items-center gap-2">

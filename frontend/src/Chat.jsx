@@ -1,27 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api'
-import { AGENTS, AgentChip, Badge, Conf, Markdownish } from './ui'
+import { AGENTS, Badge, Conf, Markdownish } from './ui'
 
 const T = {
   en: {
-    placeholder: 'Type your message…',
-    send: 'Send',
-    thinking: 'Agent working…',
-    citations: 'Sources',
+    placeholder: 'Type your message…', send: 'Send', thinking: 'Agent working…',
     blocked: 'Response verified & partially withheld — escalated to a human specialist',
-    doc: 'Document processed',
-    reviewWait: 'Waiting for human review — approve it in the Documents view',
-    you: 'You',
+    you: 'You', triageQuery: 'Triaged: QUERY — answered from knowledge base', triageComplaint: 'Triaged: COMPLAINT — investigation opened',
   },
   ar: {
-    placeholder: 'اكتب رسالتك…',
-    send: 'إرسال',
-    thinking: 'الوكيل يعمل…',
-    citations: 'المصادر',
+    placeholder: 'اكتب رسالتك…', send: 'إرسال', thinking: 'الوكيل يعمل…',
     blocked: 'تم التحقق من الرد وحُجب جزئياً — صُعّد إلى مختص بشري',
-    doc: 'تمت معالجة المستند',
-    reviewWait: 'بانتظار المراجعة البشرية — اعتمدها من شاشة المستندات',
-    you: 'أنت',
+    you: 'أنت', triageQuery: 'الفرز: استفسار — إجابة من قاعدة المعرفة', triageComplaint: 'الفرز: شكوى — فُتح تحقيق',
   },
 }
 
@@ -31,9 +21,9 @@ function ActivityFeed({ items, shown, lang }) {
       {items.slice(0, shown).map((a, i) => {
         const ag = AGENTS[a.agent] || AGENTS.resolution
         return (
-          <div key={i} className="fade-up flex items-start gap-2 text-[12px] text-muted">
+          <div key={i} className="fade-up flex items-start gap-2 text-[11.5px] text-muted">
             <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ag.color }} />
-            <span><span className="font-semibold" style={{ color: ag.color }}>{ag.short}</span>{' · '}
+            <span><span className="font-bold" style={{ color: ag.color }}>{ag.short}</span>{' · '}
               {lang === 'ar' ? a.labelAr || a.labelEn : a.labelEn}</span>
           </div>
         )
@@ -44,9 +34,9 @@ function ActivityFeed({ items, shown, lang }) {
 
 function DocCard({ doc, lang }) {
   return (
-    <div className="border border-line rounded-xl bg-panel p-3.5 my-1">
+    <div className="glass-strong-card p-3.5 my-1 ms-[38px]">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="font-semibold text-[13px]">📄 {doc.fileName}</div>
+        <div className="font-bold text-[13px] text-ink">📄 {doc.fileName}</div>
         <div className="flex gap-1.5">
           <Badge tone="doc">{doc.docTypeName} · {Math.round(doc.classificationConfidence * 100)}%</Badge>
           <Badge tone={doc.reviewRequired ? 'warn' : 'ok'}>{doc.reviewRequired ? 'HITL review' : 'Auto-approved'}</Badge>
@@ -57,7 +47,7 @@ function DocCard({ doc, lang }) {
           <div key={f.key} className="flex items-center justify-between gap-3 text-[12.5px]">
             <span className="text-muted">{lang === 'ar' ? f.labelAr : f.labelEn}</span>
             <span className="flex items-center gap-2.5">
-              <span className={`font-semibold tabnums ${f.needsReview ? 'text-warn' : ''}`}>{f.value}</span>
+              <span className={`font-bold tabnums ${f.needsReview ? 'text-warn' : 'text-ink'}`}>{f.value}</span>
               <Conf value={f.confidence} threshold={f.threshold} />
             </span>
           </div>
@@ -74,7 +64,7 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
   const [suggestions, setSuggestions] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [staging, setStaging] = useState(null) // {msg, shown}
+  const [staging, setStaging] = useState(null)
   const bottomRef = useRef(null)
   const sessionRef = useRef(null)
 
@@ -86,7 +76,6 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
     })
   }, [channel, citizenId])
 
-  // poll for agent-initiated events (post-review, case closure)
   useEffect(() => {
     const iv = setInterval(async () => {
       if (!sessionRef.current) return
@@ -104,7 +93,6 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
     return () => clearInterval(iv)
   }, [lang])
 
-  // staged reveal of the activity feed, then the answer
   useEffect(() => {
     if (!staging) return
     const total = staging.msg.activity.length
@@ -116,7 +104,8 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
       const m = staging.msg
       setMessages((prev) => [...prev, {
         role: 'agent', text: lang === 'ar' ? m.answerAr : m.answerEn,
-        citations: m.citations, blocked: m.blocked, traceId: m.traceId, activity: m.activity,
+        citations: m.citations, blocked: m.blocked, traceId: m.traceId,
+        activity: m.activity, triage: m.triage,
       }])
       setSuggestions(m.suggestions || [])
       if (onSentiment) onSentiment(m.sentiment)
@@ -168,30 +157,31 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
 
   return (
     <div className="flex flex-col h-full" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="flex-1 overflow-y-auto px-1 space-y-3 pb-3">
+      <div className="flex-1 overflow-y-auto px-1 space-y-3.5 pb-3">
         {messages.map((m, i) => {
           if (m.role === 'doc') return <DocCard key={i} doc={m.document} lang={lang} />
           const user = m.role === 'user'
           return (
-            <div key={i} className={`fade-up flex ${user ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-[13.5px] ${user
-                ? 'bg-brand text-white rounded-br-md'
-                : m.blocked ? 'bg-[#fdf6f5] border border-[#eeD5d2] rounded-bl-md' : 'bg-panel border border-line rounded-bl-md'}`}>
-                {!user && (
-                  <div className="flex items-center justify-between gap-3 mb-1.5">
-                    <AgentChip agent="resolution" />
-                    {m.blocked && <Badge tone="crit">⛔ {lang === 'ar' ? 'رد محجوب جزئياً' : 'guardrail'}</Badge>}
+            <div key={i} className={`fade-up flex items-start gap-2 ${user ? 'flex-row-reverse' : ''}`}>
+              <div className={`avatar ${user ? 'avatar-user' : 'avatar-bot'}`}>{user ? '🧕' : '🏛️'}</div>
+              <div className={`max-w-[82%] px-4 py-3 text-[13.5px] ${user ? 'msg-user-bubble' : `msg-bot-bubble ${m.blocked ? 'blocked' : ''}`}`}>
+                {!user && (m.triage || m.blocked) && (
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {m.triage && (
+                      <Badge tone={m.triage.type === 'QUERY' ? 'know' : 'case'}>
+                        {m.triage.type === 'QUERY' ? `🔎 ${t.triageQuery}` : `📋 ${t.triageComplaint}`}
+                      </Badge>
+                    )}
+                    {m.blocked && <Badge tone="crit">⛔ {lang === 'ar' ? 'رد محجوب جزئياً' : 'guardrail block'}</Badge>}
                   </div>
                 )}
-                <Markdownish text={m.text} className={user ? '' : 'text-ink'} />
-                {m.blocked && (
-                  <div className="mt-2 text-[11.5px] font-semibold text-crit">{t.blocked}</div>
-                )}
+                <Markdownish text={m.text} className="text-ink-2" />
+                {m.blocked && <div className="mt-2 text-[11.5px] font-bold text-crit">{t.blocked}</div>}
                 {!user && m.citations?.length > 0 && (
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {m.citations.map((c, j) => (
                       <span key={j} title={lang === 'ar' ? c.textPreviewAr : c.textPreview}
-                        className="text-[11px] font-semibold bg-brand-soft text-brand rounded-full px-2 py-0.5 cursor-help">
+                        className="text-[10.5px] font-bold bg-brand-soft text-brand rounded-full px-2 py-0.5 cursor-help border border-brand/15">
                         📎 {c.docId} · {c.article} · p.{c.page}
                       </span>
                     ))}
@@ -203,37 +193,38 @@ export default function Chat({ channel = 'citizen', citizenId = '784-1985-938475
         })}
 
         {(busy || staging) && (
-          <div className="fade-up bg-panel border border-line rounded-2xl rounded-bl-md px-4 py-3 max-w-[85%]">
-            <div className="flex items-center gap-2 text-[12.5px] text-muted">
-              <span className="flex gap-1">
-                <span className="typing-dot w-1.5 h-1.5 rounded-full bg-agres inline-block" />
-                <span className="typing-dot w-1.5 h-1.5 rounded-full bg-agres inline-block" />
-                <span className="typing-dot w-1.5 h-1.5 rounded-full bg-agres inline-block" />
-              </span>
-              {t.thinking}
+          <div className="fade-up flex items-start gap-2">
+            <div className="avatar avatar-bot">🏛️</div>
+            <div className="msg-bot-bubble px-4 py-3 max-w-[82%]">
+              <div className="flex items-center gap-2 text-[12px] text-muted">
+                <span className="flex gap-1">
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full bg-brand inline-block" />
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full bg-brand inline-block" />
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full bg-brand inline-block" />
+                </span>
+                {t.thinking}
+              </div>
+              {staging && <ActivityFeed items={staging.msg.activity} shown={staging.shown} lang={lang} />}
             </div>
-            {staging && <ActivityFeed items={staging.msg.activity} shown={staging.shown} lang={lang} />}
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
       {suggestions.length > 0 && !busy && (
-        <div className="flex flex-wrap gap-2 py-2">
+        <div className="flex flex-wrap gap-2 py-2.5">
           {suggestions.map((s, i) => (
-            <button key={i} onClick={() => onSuggestion(s)}
-              className="text-[12.5px] font-semibold border border-brand/30 text-brand bg-brand-soft/50 hover:bg-brand-soft rounded-full px-3 py-1.5 transition">
+            <button key={i} onClick={() => onSuggestion(s)} className="suggestion-chip">
               {lang === 'ar' ? s.ar : s.en}
             </button>
           ))}
         </div>
       )}
 
-      <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="flex gap-2 pt-2 border-t border-line">
+      <form onSubmit={(e) => { e.preventDefault(); send(input) }} className="flex gap-2 pt-2.5 border-t border-ink/10">
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder}
-          className="flex-1 bg-panel border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none focus:border-brand" />
-        <button type="submit" disabled={busy || !input.trim()}
-          className="bg-brand text-white rounded-xl px-4 font-semibold text-[13px] disabled:opacity-40">{t.send}</button>
+          className="glass-input flex-1 px-3.5 py-2.5 text-[13.5px]" />
+        <button type="submit" disabled={busy || !input.trim()} className="btn-primary px-4 text-[13px]">{t.send}</button>
       </form>
     </div>
   )

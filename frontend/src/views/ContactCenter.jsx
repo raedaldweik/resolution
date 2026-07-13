@@ -28,7 +28,7 @@ export default function ContactCenter() {
           <SectionTitle>Citizen lookup</SectionTitle>
           <div className="flex gap-2">
             <input value={eid} onChange={(e) => setEid(e.target.value)} placeholder="Emirates ID"
-              className="flex-1 border border-line rounded-lg px-2.5 py-1.5 text-[12.5px] tabnums outline-none focus:border-brand" />
+              className="glass-input flex-1 px-2.5 py-1.5 text-[12.5px] tabnums" />
             <Btn small onClick={lookup}>Find</Btn>
           </div>
           {citizen && (
