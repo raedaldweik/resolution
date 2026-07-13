@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body, #root { height: 100%; }
+body { @apply bg-paper text-ink font-sans antialiased; font-size: 14.5px; }
+
+[dir='rtl'] { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif; }
+
+.tabnums { font-variant-numeric: tabular-nums; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { @apply bg-line rounded-full; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fadeUp .3s ease both; }
+@keyframes pulseDot { 0%,100% { opacity:.25 } 50% { opacity:1 } }
+.typing-dot { animation: pulseDot 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s }
+.typing-dot:nth-child(3) { animation-delay: .4s }
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .typing-dot { animation: none; }
+}
+
+.md-strong strong { @apply font-semibold text-ink; }
