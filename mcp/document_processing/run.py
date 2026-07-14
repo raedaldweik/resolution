@@ -17,10 +17,18 @@ Tools:
 Environment:
   PORT            listen port (default 8400)
   OCR_LANGUAGES   default tesseract languages (default "ara+eng")
+  CUSTOM_FIELDS   optional JSON object of extra fields for extract_fields,
+                  name → regex, e.g.
+                  {"passportNumber": "\\b[A-Z]\\d{8}\\b",
+                   "jobTitle": "as ([A-Za-z ]+) since"}
+                  Custom fields are ADDED to the defaults (same name
+                  overrides). A regex with a capturing group returns
+                  group 1, otherwise the whole match. Unset = defaults only.
 """
 
 import base64
 import io
+import json
 import os
 import re
 import statistics
@@ -99,19 +107,52 @@ FIELD_PATTERNS = {
 _IBAN_FIX = str.maketrans({"O": "0", "o": "0", "I": "1", "l": "1"})
 
 
+def _load_custom_fields() -> dict:
+    """Operator-defined extra fields from the CUSTOM_FIELDS env var (set it on
+    the RAM Container MCP Server template). Bad JSON or a bad regex must never
+    take the server down — log and fall back to the defaults."""
+    raw = os.getenv("CUSTOM_FIELDS", "").strip()
+    if not raw:
+        return {}
+    try:
+        spec = json.loads(raw)
+        assert isinstance(spec, dict)
+    except (json.JSONDecodeError, AssertionError):
+        print("[moce-document-processing] CUSTOM_FIELDS ignored — must be a JSON "
+              'object of {"fieldName": "regex"}')
+        return {}
+    out = {}
+    for name, pattern in spec.items():
+        try:
+            out[str(name)] = re.compile(str(pattern), re.IGNORECASE | re.MULTILINE)
+        except re.error as e:
+            print(f"[moce-document-processing] CUSTOM_FIELDS[{name!r}] skipped — invalid regex: {e}")
+    if out:
+        print(f"[moce-document-processing] custom extraction fields active: {sorted(out)}")
+    return out
+
+
+CUSTOM_FIELDS = _load_custom_fields()
+
+
 @mcp.tool()
 def extract_fields(text: str) -> dict:
     """Extract the key structured fields from OCR'd document text:
-    Emirates ID number, IBAN, AED amounts, dates, UAE phone numbers, emails.
-    Purely pattern-based — every value returned exists in the text (IBANs are
-    additionally normalized for common OCR digit confusions like O→0)."""
+    Emirates ID number, IBAN, AED amounts, dates, UAE phone numbers, emails —
+    plus any operator-defined fields configured on this server (the
+    customFieldsActive list in the result). Purely pattern-based — every value
+    returned exists in the text (IBANs are additionally normalized for common
+    OCR digit confusions like O→0)."""
     out = {}
-    for field, pattern in FIELD_PATTERNS.items():
-        if field == "amountsAED":
+    for field, pattern in {**FIELD_PATTERNS, **CUSTOM_FIELDS}.items():
+        if field in CUSTOM_FIELDS:
+            values = [(m.group(1) if pattern.groups and m.group(1) is not None else m.group(0))
+                      for m in pattern.finditer(text)]
+        elif field == "amountsAED":
             values = [m.group(1) or m.group(2) for m in pattern.finditer(text)]
         else:
             values = [m.group(0) for m in pattern.finditer(text)]
-        if field == "iban":
+        if field == "iban" and field not in CUSTOM_FIELDS:
             values = ["AE" + v[2:].translate(_IBAN_FIX) for v in values]
         seen, unique = set(), []
         for v in values:
@@ -121,6 +162,7 @@ def extract_fields(text: str) -> dict:
                 unique.append(v.strip())
         out[field] = unique
     out["fieldsFound"] = sum(1 for v in out.values() if isinstance(v, list) and v)
+    out["customFieldsActive"] = sorted(CUSTOM_FIELDS)
     return out
 
 

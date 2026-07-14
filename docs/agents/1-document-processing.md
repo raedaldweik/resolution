@@ -21,6 +21,30 @@ English inside). Tools, all real:
 three tools list. (If RAM can't pull GHCR, deploy the image anywhere and
 register it as a **Remote MCP Server** with URL `https://<host>/mcp`.)
 
+**Optional environment variables** (set on the template in RAM):
+
+| Variable | Default | What it does |
+|---|---|---|
+| `OCR_LANGUAGES` | `ara+eng` | default tesseract languages for `ocr_document` |
+| `CUSTOM_FIELDS` | *(unset — defaults only)* | JSON object adding your own fields to `extract_fields`: `{"fieldName": "regex"}` |
+
+`CUSTOM_FIELDS` example — add a passport number, a job title, and an issue
+date on top of the built-in six (Emirates ID, IBAN, amounts, dates, phones,
+emails):
+
+```json
+{"passportNumber": "\\b[A-Z]\\d{8}\\b",
+ "jobTitle": "as ([A-Za-z ]+?) since",
+ "issueDate": "Date of issue: (\\d{4}-\\d{2}-\\d{2})"}
+```
+
+Rules: custom fields are **added** to the defaults (reusing a default's name
+overrides it); a regex **with a capturing group returns group 1**, otherwise
+the whole match; an invalid regex is skipped (logged) and invalid JSON falls
+back to defaults — the server never crashes on a bad value. The tool's result
+lists `customFieldsActive` so you can see in the agent trace which extras are
+configured. Restart the tool server in RAM after changing the variable.
+
 ## 3. Create the agent
 
 **Agents → Create an Agent** → `MoCE Document Processing` → tools-based
