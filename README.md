@@ -87,6 +87,10 @@ What the header pill means: **Not configured** → `RAM_API_URL` unset ·
 RAM (the dropdown now lists your real agents) · **Mock mode** → `RAM_MOCK=true`
 · **Backend offline** → check `GET /api/health`, it returns the exact error.
 
-Attachments in chat are extracted server-side (PDF/DOCX/text; images are
-OCR'd with the same tesseract engine as the Document Processing MCP) and
-inlined into the query, since RAM's query API is text-only.
+Attachments in chat: PDF/DOCX/text are extracted server-side and inlined into
+the query (RAM's query API is text-only). **Scanned images** are hosted at
+`/api/files/{id}` and the query instructs the Document Processing agent to
+read them itself via its `ocr_document` MCP tool — the OCR happens in the RAM
+agent and appears in its tool-call trace. Set `PUBLIC_BASE_URL` to the UI's
+public domain so those links are reachable from the MCP container (details:
+`docs/agents/1-document-processing.md` §5).

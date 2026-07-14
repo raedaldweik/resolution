@@ -76,3 +76,28 @@ Test in RAM chat with `knowledge_base/samples/salary_certificate_scanned.png`
 (host it anywhere reachable and pass the URL, or paste base64): expect gross
 income **AED 23,500**, Emirates ID **784-1985-9384756-1**, type
 `salary_certificate`, and ~95% confidence.
+
+## 5. Uploading documents through the UI
+
+The chat UI's 📎 button feeds this agent directly. When the user attaches a
+scanned image (PNG/JPG/TIFF), the UI backend hosts it at an unguessable
+`/api/files/{id}` URL and the query tells the agent to read it itself:
+
+> call `ocr_document` with `image_url="https://<ui-domain>/api/files/…"`,
+> then `classify_document` and `extract_fields`
+
+— so the OCR genuinely runs in the RAM agent's MCP tool and shows up in the
+answer's tool-call trace. Two requirements:
+
+1. **The MCP server container must be able to reach the UI's URL.** On a
+   public deployment (Railway) this just works; set `PUBLIC_BASE_URL`
+   (e.g. `https://moce-ui.up.railway.app`) on the UI service so generated
+   links use the public domain. For a locally-run UI, the container can't
+   reach `localhost` — deploy the UI or tunnel it.
+2. Attach the image with **this agent (or the Customer Resolution
+   orchestrator) selected** in the dropdown — an agent without the OCR tools
+   can't follow the instruction.
+
+Text attachments (PDF/DOCX/TXT) behave differently: their text is extracted
+by the UI backend and inlined into the query, since RAM's query API is
+text-only and those don't need OCR.

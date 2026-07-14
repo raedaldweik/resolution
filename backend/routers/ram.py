@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import io
+import os
+import uuid
+from collections import OrderedDict
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel
 
 from services import ram
@@ -14,10 +17,37 @@ router = APIRouter(prefix="/api", tags=["ram"])
 # sane prompt budget for the agent's LLM.
 MAX_ATTACH_CHARS = 20_000
 
+# Uploaded scans, held in memory and served at /api/files/{id} so the RAM
+# Document Processing agent can fetch them with its ocr_document tool
+# (image_url). Capability URLs: unguessable UUID ids, bounded buffer.
+_FILES: OrderedDict[str, tuple[bytes, str, str]] = OrderedDict()  # id -> (bytes, content_type, name)
+MAX_STORED_FILES = 24
+
+
+def _store_file(data: bytes, content_type: str, name: str) -> str:
+    file_id = uuid.uuid4().hex
+    _FILES[file_id] = (data, content_type, name)
+    while len(_FILES) > MAX_STORED_FILES:
+        _FILES.popitem(last=False)
+    return file_id
+
+
+def _public_base(request: Request) -> str:
+    """Absolute base URL the MCP container can fetch from. PUBLIC_BASE_URL
+    wins (set it to the deployed domain, e.g. https://moce-ui.up.railway.app);
+    otherwise derive from the request, honoring the proxy's forwarded proto."""
+    explicit = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    if explicit:
+        return explicit
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
 
 class Attachment(BaseModel):
     name: str
-    text: str
+    text: str | None = None
+    imageUrl: str | None = None   # scanned document → agent reads it via ocr_document
 
 
 class QueryRequest(BaseModel):
@@ -66,12 +96,27 @@ async def auth_viya_code(body: AuthCode):
     return await _wrap(ram.viya_code_exchange(body.code))
 
 
-# ─── Attachments (ad-hoc documents, inlined into the query) ─────────
+# ─── Attachments ─────────────────────────────────────────────────────
+# Text documents (PDF/DOCX/TXT…) are extracted here and inlined into the
+# query — RAM's query API is text-only. Scanned images are different: they
+# are stored and served at /api/files/{id}, and the query instructs the
+# Document Processing agent to read them itself with its ocr_document MCP
+# tool — so the parsing genuinely happens in the RAM agent.
+@router.get("/files/{file_id}")
+async def serve_file(file_id: str):
+    entry = _FILES.get(file_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="File expired or unknown.")
+    data, content_type, name = entry
+    return Response(content=data, media_type=content_type,
+                    headers={"Content-Disposition": f'inline; filename="{name}"'})
+
+
 @router.post("/extract")
-async def extract(file: UploadFile = File(...)):
-    """Extract plain text from an uploaded document so it can be sent
-    inline with a question. RAM's query API is text-only, so this is how
-    ad-hoc files reach the agent without indexing them into a collection."""
+async def extract(request: Request, file: UploadFile = File(...)):
+    """Prepare an uploaded document to be sent with the next question:
+    text formats come back as extracted text; images come back as a hosted
+    URL for the agent's OCR tool (plus kind="image")."""
     data = await file.read()
     name = file.filename or "attachment"
     ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
@@ -100,26 +145,19 @@ async def extract(file: UploadFile = File(...)):
     elif ext in ("txt", "md", "csv", "json", "log", "xml", "html", "yaml", "yml", "sas", "sql", "py"):
         text = data.decode("utf-8", errors="replace")
     elif ext in ("png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff"):
-        # Scanned documents are OCR'd locally (tesseract, Arabic + English) —
-        # the same engine behind the Document Processing agent's MCP server.
-        try:
-            import pytesseract
-            from PIL import Image
-            text = pytesseract.image_to_string(Image.open(io.BytesIO(data)), lang="ara+eng")
-        except ImportError:
-            raise HTTPException(status_code=415, detail=(
-                "OCR isn't installed on this server (pip install pytesseract Pillow "
-                "+ the tesseract-ocr system package)."))
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"OCR failed: {e}")
-        if not text.strip():
-            raise HTTPException(status_code=422, detail=(
-                "OCR found no readable text in this image — try a sharper scan."))
+        # Scanned document: host it and hand the AGENT the URL — its
+        # ocr_document MCP tool does the reading (real agent-side OCR).
+        content_type = file.content_type or f"image/{'jpeg' if ext in ('jpg', 'jpeg') else ext}"
+        file_id = _store_file(data, content_type, name)
+        return {"name": name, "kind": "image",
+                "url": f"{_public_base(request)}/api/files/{file_id}",
+                "chars": 0, "truncated": False}
     else:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: .{ext or '?'}")
 
     truncated = len(text) > MAX_ATTACH_CHARS
-    return {"name": name, "text": text[:MAX_ATTACH_CHARS], "chars": len(text), "truncated": truncated}
+    return {"name": name, "kind": "text", "text": text[:MAX_ATTACH_CHARS],
+            "chars": len(text), "truncated": truncated}
 
 
 # ─── RAM proxy ───────────────────────────────────────────────────────
@@ -153,8 +191,17 @@ async def query(body: QueryRequest):
     content = body.content
     if body.attachments:
         for a in body.attachments:
-            content += f"\n\n--- Attached document: {a.name} ---\n{a.text[:MAX_ATTACH_CHARS]}\n--- End of attached document ---"
-        content += "\n\nUse the attached document content above to answer the question where relevant."
+            if a.imageUrl:
+                content += (
+                    f"\n\n--- Attached scanned document: {a.name} ---\n"
+                    f"The user attached a scanned document image. Read it yourself with your "
+                    f"OCR tooling before answering: call ocr_document with "
+                    f"image_url=\"{a.imageUrl}\" to extract the text, then classify_document "
+                    f"and extract_fields on that text as needed. Do not guess the document's "
+                    f"contents without reading it, and quote extracted values exactly.")
+            elif a.text:
+                content += f"\n\n--- Attached document: {a.name} ---\n{a.text[:MAX_ATTACH_CHARS]}\n--- End of attached document ---"
+        content += "\n\nUse the attached document(s) above to answer the question where relevant."
     return await _wrap(ram.submit_query(
         content,
         agent_id=body.agentId,

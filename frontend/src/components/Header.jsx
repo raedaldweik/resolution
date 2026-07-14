@@ -78,14 +78,6 @@ export default function Header() {
     <header className="app-header">
       {/* MoCE lockup — left */}
       <div className="header-lockup">
-        <span className="uae-flag" aria-hidden="true">
-          <svg viewBox="0 0 36 24" width="34" height="22">
-            <rect width="36" height="8" fill="#00843d" />
-            <rect y="8" width="36" height="8" fill="#ffffff" />
-            <rect y="16" width="36" height="8" fill="#1a1a1a" />
-            <rect width="10" height="24" fill="#ce1126" />
-          </svg>
-        </span>
         <img className="gov-logo" src="/moce-logo.png" alt="MoCE"
           onError={e => { e.target.style.display = 'none'; }} />
         <div className="lockup-names">

@@ -98,7 +98,7 @@ export default function ChatPage() {
     setLiveTrace(null);
     try {
       const sub = await submitQuery(q, target, activeChat?.sessionId || null,
-        attached ? [{ name: attached.name, text: attached.text }] : null);
+        attached ? [{ name: attached.name, text: attached.text || null, imageUrl: attached.url || null }] : null);
       if (sub.querySessionId) setChatSession(activeChatId, sub.querySessionId, target);
 
       let res = sub.result;
@@ -365,8 +365,9 @@ export default function ChatPage() {
                 </svg>
                 {attachment.name}
                 <span className="font-normal" style={{ color: 'var(--text-dim)' }}>
-                  {attachment.truncated ? `first ${Math.round(attachment.text.length / 1000)}k chars` : `${(attachment.chars / 1000).toFixed(1)}k chars`}
-                  {' '}· sent with your next question
+                  {attachment.kind === 'image'
+                    ? 'scanned document · the agent will read it with its OCR tool'
+                    : `${attachment.truncated ? `first ${Math.round(attachment.text.length / 1000)}k chars` : `${(attachment.chars / 1000).toFixed(1)}k chars`} · sent with your next question`}
                 </span>
                 <button onClick={() => setAttachment(null)} className="font-bold hover:opacity-70" style={{ color: 'var(--text-dim)' }}>✕</button>
               </div>
