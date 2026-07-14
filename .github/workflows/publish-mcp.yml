@@ -41,6 +41,9 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
+          # GHCR occasionally rejects provenance manifest pushes with
+          # "unknown blob" — plain image manifests avoid it
+          provenance: false
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ github.sha }}
