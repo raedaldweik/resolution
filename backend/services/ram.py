@@ -537,21 +537,49 @@ def _extract_query_id(body: dict | None, resp: httpx.Response | None) -> str | N
 
 
 def _query_finished(q: dict | None) -> bool:
-    """A pending async query has errorCode 0 and a null response; it's done
-    once RAM writes a response object or a nonzero errorCode."""
+    """Done = a nonzero errorCode/errorText, a terminal state field, or a
+    response that actually carries content.
+
+    Some RAM builds attach an EMPTY response object ({} or {"answer": null})
+    to the query record while the agent is still running — treating any
+    non-null response as finished made those deployments render '(empty
+    answer)' with zero tokens instantly. So an empty response only counts as
+    finished when the record's state says the run is over."""
     if not q:
         return False
     if q.get("errorCode") or q.get("errorText"):
         return True
-    return q.get("response") is not None
+    state = str(q.get("state") or q.get("status") or "").lower()
+    if state in ("completed", "complete", "succeeded", "success", "done",
+                 "failed", "error", "canceled", "cancelled", "timedout"):
+        return True
+    if state in ("pending", "running", "executing", "inprogress", "in_progress",
+                 "created", "queued", "submitted", "started"):
+        return False
+    resp = q.get("response")
+    if isinstance(resp, dict):
+        return (resp.get("answer") is not None or bool(resp.get("toolCalls"))
+                or bool(resp.get("context")))
+    return resp is not None
 
 
 async def _fetch_query(query_id: str) -> dict | None:
     """Fetch a single query record. There is no GET /query/{id} item endpoint
-    in the v1 API — use the collection endpoint's id filter."""
-    body = await _request("GET", "/query", params={"filter": f"eq(id,'{query_id}')", "limit": 1})
+    in the v1 API — use the collection endpoint's id filter (and match the id
+    client-side too, in case a deployment ignores the filter)."""
+    body = await _request("GET", "/query", params={"filter": f"eq(id,'{query_id}')", "limit": 100})
     items = body.get("items") or []
-    return items[0] if items else None
+    return next((i for i in items if str(i.get("id")) == str(query_id)),
+                items[0] if len(items) == 1 else None)
+
+
+async def fetch_query_raw(query_id: str) -> dict:
+    """The untouched RAM query record — /api/query/{id}/raw exposes this for
+    diagnosing deployment-specific shapes (empty answers, odd state fields)."""
+    q = await _fetch_query(query_id)
+    if q is None:
+        raise RamError(404, f"RAM returned no query record for id {query_id!r}.")
+    return q
 
 
 def _normalize_query(q: dict) -> dict:

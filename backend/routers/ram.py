@@ -14,8 +14,10 @@ from services import ram
 router = APIRouter(prefix="/api", tags=["ram"])
 
 # Attached documents are inlined into the query text — keep them inside a
-# sane prompt budget for the agent's LLM.
-MAX_ATTACH_CHARS = 20_000
+# sane budget: some RAM deployments reject long query content outright
+# (HTTP 500 on submit), and the agent's LLM has a prompt budget too.
+# Tune per environment with ATTACH_MAX_CHARS.
+MAX_ATTACH_CHARS = int(os.getenv("ATTACH_MAX_CHARS", "8000"))
 
 # Uploaded scans, held in memory and served at /api/files/{id} so the RAM
 # Document Processing agent can fetch them with its ocr_document tool
@@ -202,12 +204,23 @@ async def query(body: QueryRequest):
             elif a.text:
                 content += f"\n\n--- Attached document: {a.name} ---\n{a.text[:MAX_ATTACH_CHARS]}\n--- End of attached document ---"
         content += "\n\nUse the attached document(s) above to answer the question where relevant."
-    return await _wrap(ram.submit_query(
-        content,
-        agent_id=body.agentId,
-        collection_ids=body.collectionIds,
-        session_id=body.querySessionId,
-    ))
+    try:
+        return await ram.submit_query(
+            content,
+            agent_id=body.agentId,
+            collection_ids=body.collectionIds,
+            session_id=body.querySessionId,
+        )
+    except ram.RamError as e:
+        detail = e.message
+        if body.attachments and e.status >= 500:
+            detail += (" — RAM rejected this query. With an attached document this usually "
+                       "means the inlined text exceeds the deployment's query size limit: "
+                       "lower ATTACH_MAX_CHARS on the UI service (try 4000), or index the "
+                       "document into a collection and ask the Knowledge agent instead.")
+        raise HTTPException(status_code=e.status if 400 <= e.status < 600 else 502, detail=detail)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach SAS RAM: {e}")
 
 
 @router.get("/query/{query_id}")
@@ -218,3 +231,10 @@ async def query_status(query_id: str):
 @router.get("/query/{query_id}/trace")
 async def query_trace(query_id: str):
     return await _wrap(ram.query_trace(query_id))
+
+
+@router.get("/query/{query_id}/raw")
+async def query_raw(query_id: str):
+    """RAM's untouched query record — for diagnosing deployment-specific
+    response shapes (empty answers, unusual state fields)."""
+    return await _wrap(ram.fetch_query_raw(query_id))
