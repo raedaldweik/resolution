@@ -64,12 +64,29 @@ tracked branch redeploys; the GitHub Action publishes the two MCP images to
 GHCR on any `mcp/**` change (make the packages public after the first run so
 RAM can pull them).
 
-## Connecting to RAM
+## Connecting to RAM — identical to finance_ram_ui
 
-Set `RAM_API_URL` in `backend/.env`. Sign-in is interactive by default: the
-header shows **Sign in**, supporting both standalone RAM (Keycloak device
-code) and full Viya (SASLogon paste-the-code) — or set `RAM_TOKEN` /
-`SAS_CLIENT_ID`+`SAS_CLIENT_SECRET` for headless auth. Attachments in chat
-are extracted server-side (PDF/DOCX/text; images are OCR'd with the same
-tesseract engine the Document Processing MCP uses) and inlined into the
-query, since RAM's query API is text-only.
+The backend is the **same RAM client as finance_ram_ui** (same code, same
+variables). If your finance UI connects, this one connects with the *exact
+same configuration*: **copy `backend/.env` from your working finance_ram_ui
+project into `backend/.env` here** (or copy the service variables if it runs
+on Railway) and restart. That's the whole setup.
+
+The variables, from `backend/.env.example`:
+
+| Variable | Required | Notes |
+|---|---|---|
+| `RAM_API_URL` | ✅ | e.g. `https://<host>/SASRetrievalAgentManager/api/v1` — without it the header shows *Not configured* |
+| `RAM_VERIFY_SSL` | if self-signed | set `false` for self-signed certificates |
+| *(nothing else)* | — | header shows **Sign in** → interactive login (Keycloak device code on standalone RAM, SASLogon paste-the-code on full Viya) |
+| `RAM_TOKEN` | optional | static bearer token instead of interactive sign-in |
+| `SAS_CLIENT_ID` / `SAS_CLIENT_SECRET` (+ `SAS_USERNAME`/`SAS_PASSWORD`) | optional | headless OAuth instead of interactive sign-in |
+
+What the header pill means: **Not configured** → `RAM_API_URL` unset ·
+**Sign in required** → URL set, click Sign in · **Connected** → talking to
+RAM (the dropdown now lists your real agents) · **Mock mode** → `RAM_MOCK=true`
+· **Backend offline** → check `GET /api/health`, it returns the exact error.
+
+Attachments in chat are extracted server-side (PDF/DOCX/text; images are
+OCR'd with the same tesseract engine as the Document Processing MCP) and
+inlined into the query, since RAM's query API is text-only.
