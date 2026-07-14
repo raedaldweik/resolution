@@ -381,9 +381,9 @@ export default function ChatPage() {
             style={{ background: 'var(--glass-strong)', backdropFilter: 'blur(12px)' }}>
             {/* Attach document */}
             <input ref={fileRef} type="file" className="hidden" onChange={pickFile}
-              accept=".pdf,.docx,.txt,.md,.csv,.json,.log,.xml,.html,.yaml,.yml,.sas,.sql,.py" />
+              accept=".png,.jpg,.jpeg,.bmp,.webp,.tif,.tiff,.pdf,.docx,.txt,.md,.csv,.json,.log,.xml,.html,.yaml,.yml,.sas,.sql,.py,image/*" />
             <button onClick={() => fileRef.current?.click()} disabled={attaching}
-              title="Attach a document (PDF, DOCX, TXT, CSV…) — its text is sent with your question"
+              title="Attach a document — scanned images (PNG/JPG) are read by the agent's OCR tool; PDF/DOCX/TXT text is sent with your question"
               className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all hover:bg-[rgba(138,106,40,0.08)] disabled:opacity-40"
               style={{ color: attachment ? 'var(--gold)' : 'var(--text-dim)' }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
