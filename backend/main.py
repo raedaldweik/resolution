@@ -21,12 +21,12 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
-from routers import ram as ram_router
-from services import ram as ram_service
+from routers import agents_api
+from services import agents as agent_service, knowledge
 
 app = FastAPI(
     title="MoCE Agent Ecosystem UI",
-    description="Chat UI for the MoCE agents on SAS Retrieval Agent Manager",
+    description="MoCE agents as Claude agentic loops + SAS Intelligent Decisioning via the sas-mcp-server MCP",
     version="0.1.0",
 )
 
@@ -39,9 +39,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ram_router.router)
+app.include_router(agents_api.router)
 
-print(f"✓ RAM connection: {ram_service.status()}")
+print(f"✓ Knowledge base indexed: {knowledge.load_index()} chunks")
+print(f"✓ Agents: {'ready' if agent_service.enabled() else 'ANTHROPIC_API_KEY missing'} "
+      f"(no RAM — Claude agents + SAS Viya direct)")
 
 # ─── Static frontend (same pattern as the Health app) ────────────────
 FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist"))
@@ -67,7 +69,7 @@ else:
         return {
             "service": "MoCE Agent Ecosystem UI",
             "status": "operational (dev mode — no frontend build found)",
-            "ram": ram_service.status(),
+            "agents": agent_service.health(),
             "hint": "run 'npm run build' in frontend/ for production, or run Vite dev server on :5173",
         }
 

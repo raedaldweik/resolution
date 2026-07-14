@@ -1,5 +1,19 @@
 # MoCE Agent Ecosystem
 
+> **THIS BRANCH (`claude/direct-viya-agents`) — no RAM.** The same three
+> agents run as **Claude agentic loops inside this backend** (model
+> `claude-opus-4-8`), and the Customer Resolution agent executes the
+> **published decision flow on SAS Intelligent Decisioning**
+> (`decision_84173c15_4130_492c_811`, step `execute`, lowercase MAS inputs)
+> through the **sas-mcp-server** sidecar (`score_data`). Same UI, same
+> dropdown, real tool/LLM traces. One Railway service; variables:
+> `ANTHROPIC_API_KEY` + `VIYA_ENDPOINT`, `VIYA_REFRESH_TOKEN`, `CLIENT_ID`,
+> `SSL_VERIFY`, `COMPUTE_CONTEXT_NAME`, `SCOPE_ENFORCE` (mixed-case spellings
+> accepted). The sas-mcp-server package is published from the
+> `claude/mcp-package` branch of raedaldweik/sas-mcp-server
+> (ghcr.io/raedaldweik/sas-mcp-server). The RAM version lives on
+> `claude/moce-agent-ecosystem-xfonrv`.
+
 Three agents on **SAS Retrieval Agent Manager** + one chat UI. Nothing else.
 
 | Agent | What it is | Build sheet |
